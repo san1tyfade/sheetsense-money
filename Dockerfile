@@ -1,33 +1,34 @@
-# Stage 1: Build the frontend, and install server dependencies
+# Stage 1: Build the React application
 FROM node:22 AS builder
 
 WORKDIR /app
 
-# Copy all files from the current directory
-COPY . ./
-RUN echo "API_KEY=PLACEHOLDER" > ./.env
-RUN echo "GEMINI_API_KEY=PLACEHOLDER" >> ./.env
+# Copy package.json and install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci
 
-# Install server dependencies
-WORKDIR /app/server
-RUN npm install
+# Copy the rest of the application code
+COPY . .
 
-# Install dependencies and build the frontend
-WORKDIR /app
-RUN mkdir dist
-RUN bash -c 'if [ -f package.json ]; then npm install && npm run build; fi'
+# Build the application
+RUN npm run build
 
-
-# Stage 2: Build the final server image
-FROM node:22
+# Stage 2: Serve the application
+FROM node:22-slim
 
 WORKDIR /app
 
-#Copy server files
-COPY --from=builder /app/server .
-# Copy built frontend assets from the builder stage
+# Install 'serve' package to serve static files
+RUN npm install -g serve
+
+# Copy built assets from builder stage
 COPY --from=builder /app/dist ./dist
 
-EXPOSE 3000
+# Expose port (Google Cloud Run uses 8080 by default)
+ENV PORT=8080
+EXPOSE 8080
 
-CMD ["node", "server.js"]
+# Start command using 'serve'
+# -s: Single-page application mode (redirects 404s to index.html)
+# -l: Listen on specified port
+CMD ["sh", "-c", "serve -s dist -l $PORT"]
