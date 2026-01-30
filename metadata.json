@@ -1,0 +1,6 @@
+{
+  "name": "Sheetsense",
+  "description": "Institutional-grade personal finance orchestration with local-first privacy.",
+  "version": "2.7.0",
+  "requestFramePermissions": []
+}
