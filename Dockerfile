@@ -10,25 +10,23 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
+# Create placeholder .env to prevent build errors if variables are referenced
+RUN echo "GEMINI_API_KEY=PLACEHOLDER" > .env
+
 # Build the application
 RUN npm run build
 
-# Stage 2: Serve the application
-FROM node:22-slim
-
-WORKDIR /app
-
-# Install 'serve' package to serve static files
-RUN npm install -g serve
+# Stage 2: Serve the application using Nginx
+FROM nginx:alpine
 
 # Copy built assets from builder stage
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Expose port (Google Cloud Run uses 8080 by default)
-ENV PORT=8080
+# Copy custom Nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Expose port 8080 (Cloud Run default)
 EXPOSE 8080
 
-# Start command using 'serve'
-# -s: Single-page application mode (redirects 404s to index.html)
-# -l: Listen on specified port
-CMD ["sh", "-c", "serve -s dist -l $PORT"]
+# Nginx runs in foreground by default in this image
+CMD ["nginx", "-g", "daemon off;"]
