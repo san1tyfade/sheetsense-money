@@ -1,7 +1,6 @@
-
 import { 
   LayoutDashboard, Wallet, TrendingUp, History, Settings, Info, 
-  Banknote, BarChart2, Gauge, Sparkles, Receipt, Activity, Layers, 
+  Banknote, BarChart4, Gauge, Sparkles, Receipt, Activity, Layers, 
   ShieldCheck, Scale 
 } from 'lucide-react';
 import { ViewState } from '../types';
@@ -55,13 +54,14 @@ export const VIEW_METADATA: Record<string, ViewDefinition> = {
     id: ViewState.SPEND,
     label: 'Spend',
     icon: Receipt,
+    protected: true,
     directorate: 'Flow',
     description: 'Neural statement processing and outflow audit.'
   },
   [ViewState.ANALYTICS]: {
     id: ViewState.ANALYTICS,
     label: 'Analytics',
-    icon: BarChart2,
+    icon: BarChart4,
     directorate: 'Flow',
     description: 'Statistical inference and comparative trends.'
   },
@@ -76,7 +76,6 @@ export const VIEW_METADATA: Record<string, ViewDefinition> = {
     id: ViewState.TOOLS,
     label: 'Tools',
     icon: Sparkles,
-    protected: true,
     directorate: 'Logistics',
     description: 'Advanced utilities and scenario calculators.'
   },

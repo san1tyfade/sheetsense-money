@@ -46,8 +46,7 @@ export const runWealthSimulation = (
         }
 
         // Check for events in this month to mark milestones
-        // Use coercion to handle any potential type mismatch in external test inputs
-        const currentEvents = (state.events || []).filter(ev => Number(ev.month) === Number(m));
+        const currentEvents = state.events.filter(ev => ev.month === m);
         const hasEvent = currentEvents.length > 0;
 
         points.push({
@@ -63,9 +62,9 @@ export const runWealthSimulation = (
 
         // Apply events for this specific month
         let eventNet = 0;
-        (state.events || []).forEach(ev => {
-          if (Number(ev.month) === Number(m)) {
-            eventNet += (ev.type === 'INFLOW' ? Number(ev.amount) : -Number(ev.amount));
+        state.events.forEach(ev => {
+          if (ev.month === m) {
+            eventNet += (ev.type === 'INFLOW' ? ev.amount : -ev.amount);
           }
         });
 

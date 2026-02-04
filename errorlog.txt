@@ -1,10 +1,41 @@
-[2026-01-29 18:32:36] Test Run Debug Log
-
 --------------------------------------------------------------------------------
-Status: ALL PASSED (52/52)
+Detailed Test Failure Analysis - 2026-02-03 
 --------------------------------------------------------------------------------
-1. MerchantIntelligence: User's manual fixes (string parsing) verified working.
-   - Parsing 'YYYY-MM-DD' by splitting string avoids timezone shifts.
-2. CryptoService: Verified user's JSDOM crypto polyfill is functioning.
 
-All tests passed.
+1. CryptoService.test.ts (Infrastructure)
+   Error: "Encryption protocol failure" / "AppError"
+   Location: services/cryptoService.ts (encryptVault)
+   Cause: The 'jsdom' test environment overrides the global 'crypto' object with a limited shim that lacks the 'subtle' API required for AES-GCM encryption.
+   Fix: Replaced the manual shim in 'tests/setup.ts' with Node.js's native 'node:crypto.webcrypto' implementation.
+
+2. IntelligenceProvider.test.ts (Infrastructure)
+   Error 1: Expected 'WALMART' but got 'WALMART BENTALL'
+   Cause: 'BENTALL' was not in the regex list of location stopwords.
+   Fix: Added 'BENTALL' to the location removal regex.
+
+   Error 2: Expected 'AMZN MKTP' but got 'AMZN MKTP R123456'
+   Cause: The regex `/[A-Z0-9]{8,}/` intended to strip codes also stripped valid 8+ letter words (potentially), but here it conversely failed to strip 'R123456' (7 chars) because the limit was 8. Lowering to 7 required care to not strip valid words.
+   Fix: Refined regex to `/\b(?=\w*\d)[A-Z0-9]{7,}\b/g` - reducing length limit to 7 but enforcing at least one digit to protect words like 'MERCHANT'.
+
+   Error 3: Expected 'UBER COMM' but got 'UBER.COMM' (dots retained)
+   Cause: Regex cleaned special junk but missed dots.
+   Fix: Added `.replace(/[*.]/g, ' ')` to strip asterisks and dots.
+
+3. MerchantIntelligence.test.ts (Domain)
+   Error: Date mismatch / Pulse check failure
+   Cause: The test constructed dates using `new Date('2024-01-01')`. In many environments, `Date.parse('YYYY-MM-DD')` is treated as UTC. When converted to local time (for month index calculation), it shifted back a day (e.g., Dec 31), causing an off-by-one month error in the 'pulse' array.
+   Fix: Manually parsed date strings `[y, m, d] = date.split('-')` and constructed local Date objects `new Date(y, m-1, d)` to ensure consistent month indexing.
+
+4. RolloverProtocol.test.ts (Services)
+   Error: "googleClient.getRange is not a function"
+   Cause: The unit test mocked `googleClient.request` but `resetYearlyLedger` internal implementation calls `googleClient.getRange` (a helper method). The mock definition was incomplete.
+   Fix: Updated the `vi.mock` factory for `GoogleClient` to include `getRange`, forwarding calls to the mocked `request` function.
+
+5. FinanceSync.test.ts & ConflictResolution.test.ts (Hooks)
+   Error: "Intercepted a request without a matching request handler" (Google Drive API)
+   Cause: The code under test calls `https://www.googleapis.com/drive/v3/files/...` to check modification time, but no MSW handler existed for this URL.
+   Fix: Added a handler for `https://www.googleapis.com/drive/v3/files/:fileId` in `tests/mocks/handlers.ts`.
+
+   Error: "Conflict logic failed" (Expected conflict, got null)
+   Cause: The `useFinanceSync` hook completely lacked the logic to check for `isDirty` flags in the local state, despite the test expecting it to block syncs when local changes exist.
+   Fix: Implemented the missing conflict check loop in `hooks/useFinanceSync.ts`.

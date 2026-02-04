@@ -1,6 +1,5 @@
 /**
  * @deprecated
- * Functional logic moved to services/infrastructure/IntelligenceProvider.ts
- * This file is retained for path compatibility during current refactor cycle.
+ * Functional logic migrated to services/infrastructure/IntelligenceProvider.ts
  */
 export {};

@@ -224,7 +224,7 @@ export const JournalView: React.FC<JournalViewProps> = ({ isSubView = false }) =
 
       <footer className="pt-20 pb-12 flex justify-center opacity-40">
           <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">
-             <Terminal size={14} className="text-blue-500" /> Instance Build v2.7.0 Stable
+             <Terminal size={14} className="text-blue-500" /> Instance Build v2.8.0 Stable
           </div>
       </footer>
     </div>

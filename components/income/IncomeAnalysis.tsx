@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { IncomeEntry, ExpenseEntry, LedgerData } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend, Sankey, Layer, Rectangle, Cell } from 'recharts';
 import { BadgeDollarSign, TrendingUp, CreditCard, Activity, GitMerge, BarChart2, X, Terminal, Zap, LayoutGrid, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { FinancialEngine } from '../../services/math/FinancialEngine';
+import { calculatePeriodTotals } from '../../services/math/financialMath';
 import { transformSankeyData, transformDetailedTrendData } from '../../services/analytics/transformers';
 import { AnalyticsCard, StatHighlight, StandardTooltip } from '../analytics/AnalyticsPrimitives';
 import { useChartTheme } from '../../hooks/useChartTheme';
@@ -62,7 +62,7 @@ export const IncomeAnalysis: React.FC<IncomeAnalysisProps> = ({
   const periodLabel = isCurrentYear ? "YTD" : "Full Year";
   const monthsList = detailedExpenses?.months || [];
 
-  const stats = useMemo(() => FinancialEngine.calculatePeriodTotals(incomeData, expenseData, selectedYear), [incomeData, expenseData, selectedYear]);
+  const stats = useMemo(() => calculatePeriodTotals(incomeData, expenseData, selectedYear), [incomeData, expenseData, selectedYear]);
 
   const expenseCategoryKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -83,6 +83,7 @@ export const IncomeAnalysis: React.FC<IncomeAnalysisProps> = ({
   const sankeyData = useMemo(() => transformSankeyData(detailedExpenses, selectedMonthIndex, isDarkMode!, selectedCategoryName), [detailedExpenses, selectedMonthIndex, isDarkMode, selectedCategoryName]);
   const detailedTrendData = useMemo(() => transformDetailedTrendData(detailedExpenses), [detailedExpenses]);
 
+  // Derive unique categories for the stacked chart based on what the transformer returned
   const trendCategoryKeys = useMemo(() => {
       if (detailedTrendData.length === 0) return [];
       const keys = new Set<string>();
@@ -91,6 +92,7 @@ export const IncomeAnalysis: React.FC<IncomeAnalysisProps> = ({
               if (k !== 'name') keys.add(k);
           });
       });
+      // Sort to keep legend stable, but put 'Other' at the end
       return Array.from(keys).sort((a, b) => {
           if (a === 'Other') return 1;
           if (b === 'Other') return -1;
@@ -222,6 +224,7 @@ export const IncomeAnalysis: React.FC<IncomeAnalysisProps> = ({
                                 <Sankey
                                     data={sankeyData} margin={{ left: 10, right: 10, top: 40, bottom: 40 }}
                                     node={<SankeyNode isDarkMode={isDarkMode} selectedCategory={selectedCategoryName} onNodeClick={(n: any) => {
+                                        // Toggle selection only if it's a category node (column 1 in default mode) or if we want to reset
                                         const isCategory = detailedExpenses.categories.some(c => c.name === n.name);
                                         if (isCategory) {
                                             setSelectedCategoryName(n.name === selectedCategoryName ? null : n.name);

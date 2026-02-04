@@ -1,13 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { TimeFocus, CustomDateRange, AnalyticsSubView } from '../types';
-import { ChevronRight, Settings2, Columns, ArrowUpDown, Clock, Zap, X, Check, BarChart2, TrendingUp } from 'lucide-react';
+import { ChevronRight, Settings2, Columns, ArrowUpDown, Clock, Zap, X, Check } from 'lucide-react';
 import { TimeFocusSelector } from './TimeFocusSelector';
 import { FlowAnalytics } from './analytics/FlowAnalytics';
 import { PortfolioAnalytics } from './analytics/PortfolioAnalytics';
 import { useFinancialStore } from '../context/FinancialContext';
 import { getTemporalWindows } from '../services/temporalService';
-import { PerspectiveToggle } from './core-ui/PerspectiveToggle';
 
 export const AnalyticsView: React.FC = () => {
   const store = useFinancialStore();
@@ -40,11 +39,6 @@ export const AnalyticsView: React.FC = () => {
     return `${startStr} — ${endStr}`;
   }, [windows]);
 
-  const views: { id: AnalyticsSubView; label: string; icon: any }[] = [
-    { id: 'FLOW', label: 'Flow', icon: BarChart2 },
-    { id: 'PORTFOLIO', label: 'Returns', icon: TrendingUp }
-  ];
-
   return (
     <div className="space-y-6 md:space-y-12 animate-fade-in pb-24 tabular-nums">
       <header className="pt-2 pb-2">
@@ -62,11 +56,21 @@ export const AnalyticsView: React.FC = () => {
           </div>
 
           <nav className="flex flex-col md:flex-row md:items-center gap-4">
-            <PerspectiveToggle 
-              options={views}
-              value={subView}
-              onChange={setSubView}
-            />
+            <div className="flex items-center gap-4 px-2 text-xl font-black tracking-tighter self-center md:self-auto uppercase">
+                <button 
+                  onClick={() => setSubView('FLOW')} 
+                  className={`transition-all duration-300 hover:text-slate-900 dark:hover:text-white ${subView === 'FLOW' ? 'text-slate-900 dark:text-white scale-105 underline decoration-blue-500 decoration-4 underline-offset-8' : 'text-slate-400'}`}
+                >
+                  Flow
+                </button>
+                <span className="text-slate-200 dark:text-slate-700 font-light text-2xl">/</span>
+                <button 
+                  onClick={() => setSubView('PORTFOLIO')} 
+                  className={`transition-all duration-300 hover:text-slate-900 dark:hover:text-white ${subView === 'PORTFOLIO' ? 'text-slate-900 dark:text-white scale-105 underline decoration-blue-500 decoration-4 underline-offset-8' : 'text-slate-400'}`}
+                >
+                  Returns
+                </button>
+            </div>
 
             {subView === 'FLOW' && (
                <div className="flex items-center justify-center gap-4 md:ml-4 border-l-0 md:border-l border-slate-200 dark:border-slate-800 md:pl-6">

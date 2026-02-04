@@ -1,9 +1,10 @@
-import { Transaction, TimeFocus, CustomDateRange, NetWorthEntry, LedgerData } from '../types';
-import { MONTH_NAMES } from './parsers/parserUtils';
+import { Transaction, LedgerData, TimeFocus, CustomDateRange, NetWorthEntry } from '../types';
+import { MONTH_NAMES, isSafeKey } from './parsers/parserUtils';
+import { getAppDB, DB_CONFIG } from './infrastructure/DatabaseProvider';
 
 /**
  * TemporalSovereign: The Chronos Authority
- * Centralizes date parsing, formatting, and logical today resolution.
+ * Normalizes 'Current Date' based on the active financial context.
  */
 export class TemporalSovereign {
   /**
@@ -17,82 +18,19 @@ export class TemporalSovereign {
   }
 
   static getLogicalTodayISO(contextYear?: number): string {
-      return this.toAbsoluteISO(this.getLogicalToday(contextYear));
+      return this.getLogicalToday(contextYear).toISOString().split('T')[0];
   }
 
-  /**
-   * Strictly enforces YYYY-MM-DD from any date input.
-   */
-  static toAbsoluteISO(date: Date | string | number): string {
+  static toISO(date: Date | string | number): string {
       const d = new Date(date);
       if (isNaN(d.getTime())) return '1970-01-01';
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-  }
-
-  /**
-   * Alias for toAbsoluteISO for compatibility with component usage.
-   */
-  static toISO(date: Date | string | number): string {
-      return this.toAbsoluteISO(date);
-  }
-
-  /**
-   * Attempt to parse various flexible date formats into YYYY-MM-DD.
-   */
-  static parseFlexible(dateStr: string): string | null {
-    if (!dateStr || dateStr.length < 2) return null; 
-    const cleanStr = dateStr.trim();
-    if (cleanStr.toLowerCase().includes('yyyy-mm-dd')) return null;
-    
-    const isoMatch = cleanStr.match(/^(\d{4})[\-\/\.](\d{1,2})[\-\/\.](\d{1,2})/);
-    if (isoMatch) {
-        const y = parseInt(isoMatch[1]);
-        const m = parseInt(isoMatch[2]);
-        const d = parseInt(isoMatch[3]);
-        if (m >= 1 && m <= 12 && d >= 1 && d <= 31) return this.toAbsoluteISO(new Date(y, m - 1, d));
-    }
-    
-    const monthYearMatch = cleanStr.match(/^([A-Za-z]{3})[\-\/](\d{2,4})$/);
-    if (monthYearMatch) {
-        const mStr = monthYearMatch[1].toLowerCase();
-        const yStr = monthYearMatch[2];
-        const mIdx = MONTH_NAMES.indexOf(mStr);
-        if (mIdx !== -1) {
-            const y = yStr.length === 2 ? 2000 + parseInt(yStr) : parseInt(yStr);
-            return this.toAbsoluteISO(new Date(y, mIdx, 1));
-        }
-    }
-    
-    const d = new Date(dateStr);
-    if (!isNaN(d.getTime()) && d.getFullYear() > 1990) return this.toAbsoluteISO(d);
-    return null;
-  }
-
-  /**
-   * Strictly detects if a string is a date marker (used for parser guards).
-   */
-  static isStrictDateMarker(val: string): boolean {
-    const clean = (val || '').trim();
-    if (!clean || clean.length < 6) return false;
-    const strictIso = /^\d{4}[-/]\d{1,2}[-/]\d{1,2}$/.test(clean);
-    const shortDate = /^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(clean);
-    const monthDayYear = /^[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4}$/.test(clean);
-    return strictIso || shortDate || monthDayYear;
-  }
-
-  /**
-   * Deterministically calculates month offset without local timezone flipping.
-   */
-  static getMonthOffset(targetISO: string, referenceISO: string): number {
-    const [tY, tM] = targetISO.split('-').map(Number);
-    const [rY, rM] = referenceISO.split('-').map(Number);
-    return (rY - tY) * 12 + (rM - tM);
+      return d.toISOString().split('T')[0];
   }
 }
 
+/**
+ * Checks if an ISO date string (YYYY-MM-DD) falls within a specific focus window.
+ */
 export const isDateInWindow = (
   dateStr: string,
   focus: TimeFocus,
@@ -107,26 +45,26 @@ export const isDateInWindow = (
   }
   
   const logicalToday = TemporalSovereign.getLogicalToday(contextYear);
-  const todayISO = TemporalSovereign.toAbsoluteISO(logicalToday);
+  const todayISO = logicalToday.toISOString().split('T')[0];
   
   switch (focus) {
     case TimeFocus.MTD: {
-      const mStart = TemporalSovereign.toAbsoluteISO(new Date(logicalToday.getFullYear(), logicalToday.getMonth(), 1));
+      const mStart = new Date(logicalToday.getFullYear(), logicalToday.getMonth(), 1).toISOString().split('T')[0];
       return cleanDate >= mStart && cleanDate <= todayISO;
     }
     case TimeFocus.QTD: {
       const qStartMonth = Math.floor(logicalToday.getMonth() / 3) * 3;
-      const qStart = TemporalSovereign.toAbsoluteISO(new Date(logicalToday.getFullYear(), qStartMonth, 1));
+      const qStart = new Date(logicalToday.getFullYear(), qStartMonth, 1).toISOString().split('T')[0];
       return cleanDate >= qStart && cleanDate <= todayISO;
     }
     case TimeFocus.YTD: {
-      const yStart = TemporalSovereign.toAbsoluteISO(new Date(logicalToday.getFullYear(), 0, 1));
+      const yStart = new Date(logicalToday.getFullYear(), 0, 1).toISOString().split('T')[0];
       return cleanDate >= yStart && cleanDate <= todayISO;
     }
     case TimeFocus.ROLLING_12M: {
       const limitDate = new Date(logicalToday);
       limitDate.setFullYear(logicalToday.getFullYear() - 1);
-      const limitISO = TemporalSovereign.toAbsoluteISO(limitDate);
+      const limitISO = limitDate.toISOString().split('T')[0];
       return cleanDate >= limitISO && cleanDate <= todayISO;
     }
     default:
@@ -134,6 +72,9 @@ export const isDateInWindow = (
   }
 };
 
+/**
+ * Returns the anchor date for a given time focus.
+ */
 export const getAnchorDate = (focus: TimeFocus, history: NetWorthEntry[] = [], customRange?: CustomDateRange, contextYear?: number): Date => {
   const today = TemporalSovereign.getLogicalToday(contextYear);
   switch (focus) {
@@ -170,6 +111,11 @@ export const getTemporalWindows = (
 ): { current: { start: string, end: string }, shadow: { start: string, end: string }, label: string } => {
     const today = TemporalSovereign.getLogicalToday(contextYear);
     
+    const toISO = (d: Date) => {
+        if (isNaN(d.getTime())) return new Date().toISOString().split('T')[0];
+        return d.toISOString().split('T')[0];
+    };
+
     let currentStart = new Date(today);
     let currentEnd = new Date(today);
     let shadowStart = new Date(today);
@@ -223,100 +169,186 @@ export const getTemporalWindows = (
     }
 
     return {
-        current: { start: TemporalSovereign.toAbsoluteISO(currentStart), end: TemporalSovereign.toAbsoluteISO(currentEnd) },
-        shadow: { start: TemporalSovereign.toAbsoluteISO(shadowStart), end: TemporalSovereign.toAbsoluteISO(shadowEnd) },
+        current: { start: toISO(currentStart), end: toISO(currentEnd) },
+        shadow: { start: toISO(shadowStart), end: toISO(shadowEnd) },
         label
     };
 };
 
+export const buildUnifiedTimeline = async (): Promise<Transaction[]> => {
+  const db = await getAppDB();
+  const tx = db.transaction(DB_CONFIG.APP.STORE, 'readonly');
+  const store = tx.objectStore(DB_CONFIG.APP.STORE);
+  return new Promise((resolve) => {
+    const keyRequest = store.getAllKeys();
+    keyRequest.onsuccess = async () => {
+      const keys = keyRequest.result.map(String);
+      const ledgerKeys = keys.filter(k => k.includes('fintrack_detailed_'));
+      if (ledgerKeys.length === 0) { resolve([]); return; }
+      const results = await Promise.all(ledgerKeys.map(key => new Promise<{key: string, data: LedgerData | undefined}>((res) => {
+          const req = store.get(key);
+          req.onsuccess = () => res({ key, data: req.result });
+          req.onerror = () => res({ key, data: undefined });
+      })));
+      const timeline: Transaction[] = [];
+      results.forEach(({ key, data }) => {
+          if (!data?.months || !data?.categories) return;
+          const typeMatch = key.match(/fintrack_detailed_(income|expenses)_(\d{4})/);
+          if (!typeMatch) return;
+          const type = typeMatch[1] === 'income' ? 'INCOME' : 'EXPENSE';
+          const year = typeMatch[2];
+          data.categories.forEach(cat => {
+              cat.subCategories.forEach(sub => {
+                  sub.monthlyValues.forEach((val, monthIdx) => {
+                      if (!val || val === 0) return;
+                      const monthName = data.months[monthIdx]; 
+                      const isoDate = parseMonthLabelToISO(monthName, year);
+                      timeline.push({
+                          id: `${key}-${cat.name}-${sub.name}-${monthIdx}`,
+                          date: isoDate,
+                          description: sub.name,
+                          category: cat.name,
+                          subCategory: sub.name,
+                          amount: Math.abs(val),
+                          type: type
+                      });
+                  });
+              });
+          });
+      });
+      resolve(timeline.sort((a, b) => b.date.localeCompare(a.date)));
+    };
+    keyRequest.onerror = () => resolve([]);
+  });
+};
+
+const parseMonthLabelToISO = (label: string, yearHint: string): string => {
+    const cleanLabel = (label || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+    const parts = cleanLabel.split(/\s+/);
+    const mIdx = MONTH_NAMES.indexOf(parts[0].substring(0, 3));
+    const month = mIdx === -1 ? '01' : String(mIdx + 1).padStart(2, '0');
+    let year = yearHint;
+    if (parts.length > 1) {
+        const yearPart = parts[parts.length - 1];
+        year = yearPart.length === 2 ? `20${yearPart}` : yearPart;
+    }
+    return `${year}-${month}-01`;
+};
+
 /**
- * aggregateDimensions: Hierarchical data aggregation for Flow analytics.
+ * aggregateDimensions: Analytics Engine
+ * Groups transactions by category, subcategory, or month based on drill-down depth.
  */
-export const aggregateDimensions = (timeline: Transaction[], drillPath: string[], type: 'EXPENSE' | 'INCOME') => {
+export const aggregateDimensions = (
+  timeline: Transaction[],
+  drillPath: string[],
+  type: string
+): { name: string; total: number; count: number }[] => {
   const depth = drillPath.length;
-  const groups: Record<string, { name: string, total: number, count: number }> = {};
+  const groups: Record<string, { total: number; count: number }> = {};
   const norm = (s: string) => (s || '').trim().toLowerCase();
 
   timeline.forEach(t => {
     if (t.type !== type) return;
 
-    let key = '';
+    let groupKey = '';
     if (depth === 0) {
-      key = t.category || 'Uncategorized';
+      groupKey = t.category || 'Uncategorized';
     } else if (depth === 1) {
-      if (norm(t.category) === norm(drillPath[0])) key = t.subCategory || 'Other';
+      if (norm(t.category) === norm(drillPath[0])) {
+        groupKey = t.subCategory || 'Other';
+      }
     } else if (depth === 2) {
-      if (norm(t.category) === norm(drillPath[0]) && norm(t.subCategory) === norm(drillPath[1])) {
-        key = t.date.substring(0, 7);
+      if (norm(t.category) === norm(drillPath[0]) && norm(t.subCategory || 'Other') === norm(drillPath[1])) {
+        groupKey = t.date.substring(0, 7); // YYYY-MM
       }
     }
 
-    if (key) {
-      if (!groups[key]) groups[key] = { name: key, total: 0, count: 0 };
-      groups[key].total += Math.abs(t.amount);
-      groups[key].count += 1;
+    if (groupKey) {
+      if (!groups[groupKey]) groups[groupKey] = { total: 0, count: 0 };
+      groups[groupKey].total += t.amount;
+      groups[groupKey].count += 1;
     }
   });
 
-  return Object.values(groups);
+  return Object.entries(groups).map(([name, stats]) => ({
+    name,
+    total: stats.total,
+    count: stats.count
+  }));
 };
 
 /**
- * aggregateComparativeTrend: Generates period-over-period trend points.
+ * aggregateComparativeTrend: Multi-Window Temporal Analysis
+ * Aggregates trend data for current vs shadow periods.
  */
-export const aggregateComparativeTrend = (active: Transaction[], shadow: Transaction[], drillPath: string[], type: 'EXPENSE' | 'INCOME') => {
-  const map: Record<string, { label: string; current: number; shadow: number }> = {};
+export const aggregateComparativeTrend = (
+  currentTimeline: Transaction[],
+  shadowTimeline: Transaction[],
+  drillPath: string[],
+  type: string
+) => {
   const norm = (s: string) => (s || '').trim().toLowerCase();
   
-  const filterByPath = (t: Transaction) => {
-    if (t.type !== type) return false;
-    if (drillPath.length > 0 && norm(t.category) !== norm(drillPath[0])) return false;
-    if (drillPath.length > 1 && norm(t.subCategory) !== norm(drillPath[1])) return false;
-    return true;
+  const getTrendPoints = (tl: Transaction[]) => {
+      const points: Record<string, number> = {};
+      tl.forEach(t => {
+          if (t.type !== type) return;
+          if (drillPath.length >= 1 && norm(t.category) !== norm(drillPath[0])) return;
+          if (drillPath.length >= 2 && norm(t.subCategory || 'Other') !== norm(drillPath[1])) return;
+          
+          const key = t.date.substring(0, 7); // YYYY-MM
+          points[key] = (points[key] || 0) + t.amount;
+      });
+      return points;
   };
 
-  active.filter(filterByPath).forEach(t => {
-    const m = t.date.substring(0, 7);
-    if (!map[m]) map[m] = { label: m, current: 0, shadow: 0 };
-    map[m].current += Math.abs(t.amount);
-  });
+  const currPoints = getTrendPoints(currentTimeline);
+  const shadPoints = getTrendPoints(shadowTimeline);
 
-  shadow.filter(filterByPath).forEach(t => {
-    const m = t.date.substring(0, 7);
-    if (!map[m]) map[m] = { label: m, current: 0, shadow: 0 };
-    map[m].shadow += Math.abs(t.amount);
-  });
+  const allMonths = Array.from(new Set([...Object.keys(currPoints), ...Object.keys(shadPoints)])).sort();
 
-  return Object.values(map).sort((a, b) => a.label.localeCompare(b.label));
+  return allMonths.map(m => ({
+      label: m,
+      current: currPoints[m] || 0,
+      shadow: shadPoints[m] || 0
+  }));
 };
 
 /**
- * calculateTemporalVariance: Basic MoM variance calculator.
+ * calculateDimensionAverage: Benchmark Logic
+ * Calculates rolling average for a specific dimension over N months.
  */
-export const calculateTemporalVariance = (curr: number, prev: number) => {
-    if (prev === 0) return 0;
-    return ((curr - prev) / prev) * 100;
-};
-
-/**
- * calculateDimensionAverage: Calculates rolling monthly average for a dimension.
- */
-export const calculateDimensionAverage = (timeline: Transaction[], drillPath: string[], type: 'EXPENSE' | 'INCOME', months: number = 12) => {
+export const calculateDimensionAverage = (
+    timeline: Transaction[],
+    drillPath: string[],
+    type: string,
+    months: number = 12
+): number => {
     const norm = (s: string) => (s || '').trim().toLowerCase();
-    const filtered = timeline.filter(t => {
-        if (t.type !== type) return false;
-        if (drillPath.length > 0 && norm(t.category) !== norm(drillPath[0])) return false;
-        if (drillPath.length > 1 && norm(t.subCategory) !== norm(drillPath[1])) return false;
-        return true;
+    const monthlyTotals: Record<string, number> = {};
+
+    timeline.forEach(t => {
+        if (t.type !== type) return;
+        if (drillPath.length >= 1 && norm(t.category) !== norm(drillPath[0])) return;
+        if (drillPath.length >= 2 && norm(t.subCategory || 'Other') !== norm(drillPath[1])) return;
+
+        const mKey = t.date.substring(0, 7);
+        monthlyTotals[mKey] = (monthlyTotals[mKey] || 0) + t.amount;
     });
-    const total = filtered.reduce((sum, t) => sum + Math.abs(t.amount), 0);
-    return total / (months || 1);
+
+    const values = Object.values(monthlyTotals);
+    if (values.length === 0) return 0;
+    
+    const recentValues = values.slice(-months);
+    return recentValues.reduce((a, b) => a + b, 0) / Math.max(1, recentValues.length);
 };
 
 /**
- * buildUnifiedTimeline: Aggregates ledger snapshots and journal receipts into a unified event stream.
+ * calculateTemporalVariance: Mathematical Primitives
+ * Calculates percentage delta between periods.
  */
-export const buildUnifiedTimeline = async (detailedIncome?: LedgerData, detailedExpenses?: LedgerData): Promise<Transaction[]> => {
-    // Placeholder implementation for timeline synchronization
-    return [];
+export const calculateTemporalVariance = (current: number, previous: number): number => {
+    if (previous === 0) return 0;
+    return ((current - previous) / previous) * 100;
 };

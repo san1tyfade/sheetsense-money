@@ -39,7 +39,7 @@ export const ToolsView: React.FC = () => {
 
       <footer className="pt-10 flex justify-center pb-20 opacity-40">
           <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">
-             <Terminal size={14} className="text-blue-500" /> Logical Tool Instance Build v2.7.0
+             <Terminal size={14} className="text-blue-500" /> Logical Tool Instance Build v2.8.0
           </div>
       </footer>
     </div>

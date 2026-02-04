@@ -4,8 +4,27 @@
 export interface ManagedEntity {
   id: string;
   rowIndex?: number;
-  isDirty?: boolean;
   isManaged?: boolean;
+  lastUplinkHash?: string;
+  // Added isDirty property to track local changes before they are committed to the spreadsheet
+  isDirty?: boolean;
+}
+
+export type MutationAction = 'UPSERT' | 'DELETE';
+
+export interface Mutation {
+  id: string;
+  entity: keyof SheetConfig['tabNames'];
+  action: MutationAction;
+  data: any;
+  timestamp: number;
+}
+
+export interface SyncMetadata {
+  tab: string;
+  lastSyncHash: string;
+  lastSyncTimestamp: string;
+  versionId?: string;
 }
 
 export interface Asset extends ManagedEntity {
@@ -137,26 +156,26 @@ export interface LedgerCategory {
 }
 
 export interface LedgerData {
-  months: string[];
-  categories: LedgerCategory[];
+    months: string[];
+    categories: LedgerCategory[];
 }
 
 export interface Transaction {
-  id: string;
-  date: string;
-  description: string;
-  canonicalName?: string;
-  amount: number;
-  category: string;
-  subCategory?: string;
-  type: string;
-  rawLine?: string;
-  isNew?: boolean;
+    id: string;
+    date: string;
+    description: string;
+    canonicalName?: string;
+    amount: number;
+    category: string;
+    subCategory?: string;
+    type: string;
+    rawLine?: string;
+    isNew?: boolean;
 }
 
 export interface CustomDateRange {
-  start: string;
-  end: string;
+    start: string;
+    end: string;
 }
 
 export interface SheetConfig {
@@ -319,22 +338,22 @@ export interface LedgerCommitPayload {
 export type SyncStatus = { type: 'success' | 'error' | 'warning', msg: string } | null;
 
 export interface GlobalModalState {
-  type: 'TRADE' | 'ASSET' | 'SUBSCRIPTION' | 'ACCOUNT' | null;
-  initialData?: any;
+    type: 'TRADE' | 'ASSET' | 'SUBSCRIPTION' | 'ACCOUNT' | null;
+    initialData?: any;
 }
 
 export interface InspectorState {
-  isOpen: boolean;
-  title: string;
-  subtitle: string;
-  transactions: Transaction[];
+    isOpen: boolean;
+    title: string;
+    subtitle: string;
+    transactions: Transaction[];
 }
 
 export interface SyncConflict {
-  tab: string;
-  localTimestamp: string;
-  remoteTimestamp: string;
-  dirtyCount: number;
+    tab: string;
+    localTimestamp: string;
+    remoteTimestamp: string;
+    dirtyCount: number;
 }
 
 export enum PaymentFrequency {
@@ -389,40 +408,14 @@ export interface VaultEnvelope {
     origin_hint: string;
     sheet_id: string;
     timestamp: string;
-    iv: string;
+    iv: string; 
     salt: string;
   };
   encrypted_payload: string;
   payload?: Record<string, any>;
   ai_memory?: {
-    merchants?: Record<string, string>;
-    merchant_identities?: Record<string, string>;
-    integration_mappings?: Record<string, string>;
+      merchants?: Record<string, string>;
+      merchant_identities?: Record<string, string>;
+      integration_mappings?: Record<string, string>;
   };
 }
-
-export interface UnifiedFinancialStore {
-  assets: Asset[];
-  investments: Investment[];
-  trades: Trade[];
-  subscriptions: Subscription[];
-  accounts: BankAccount[];
-  journalEntries: JournalEntry[];
-  netWorthHistory: NetWorthEntry[];
-  portfolioHistory: PortfolioLogEntry[];
-  debtEntries: DebtEntry[];
-  taxRecords: TaxRecord[];
-}
-
-export const INITIAL_FINANCIAL_STORE: UnifiedFinancialStore = {
-  assets: [],
-  investments: [],
-  trades: [],
-  subscriptions: [],
-  accounts: [],
-  journalEntries: [],
-  netWorthHistory: [],
-  portfolioHistory: [],
-  debtEntries: [],
-  taxRecords: []
-};

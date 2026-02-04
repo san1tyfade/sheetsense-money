@@ -1,24 +1,27 @@
-
 import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Transaction } from '../../types';
+import { Transaction, StatementFormat } from '../../types';
 import { formatBaseCurrency } from '../../services/currencyService';
-import { StatsCard } from '../dashboard/DashboardStats';
-import { Activity, CreditCard, Layers, Zap, LayoutGrid } from 'lucide-react';
+import { InstitutionalStatCard } from '../core-ui/InstitutionalStatCard';
+import { Activity, CreditCard, Layers, Zap, LayoutGrid, Terminal, TrendingUp, Sparkles, Box } from 'lucide-react';
+import { PrivacyValue } from '../core-ui/PrivacyValue';
+import { GlassCard } from '../core-ui/GlassCard';
 
 interface StatementDashboardProps {
   transactions: Transaction[];
   balance: number;
+  sourceName?: string | null;
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
-export const StatementDashboard: React.FC<StatementDashboardProps> = ({ transactions, balance }) => {
+export const StatementDashboard: React.FC<StatementDashboardProps> = ({ transactions, balance, sourceName }) => {
   const categoryData = useMemo(() => {
     const map: Record<string, number> = {};
     transactions.forEach(t => {
       if (t.amount > 0 && t.type !== 'Payment') {
-        map[t.category] = (map[t.category] || 0) + t.amount;
+        const cat = t.category || 'Uncategorized';
+        map[cat] = (map[cat] || 0) + t.amount;
       }
     });
     return Object.entries(map)
@@ -33,145 +36,137 @@ export const StatementDashboard: React.FC<StatementDashboardProps> = ({ transact
   const topTransactions = [...transactions]
     .filter(t => t.amount > 0 && t.type !== 'Payment')
     .sort((a, b) => b.amount - a.amount)
-    .slice(0, 5);
+    .slice(0, 4);
 
   return (
-    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      {/* Top Level Signal Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 px-2">
-        <StatsCard title="Ported Outflow" value={totalCalculatedSpending} icon={CreditCard} color="emerald" isLoading={false} isHistorical={false} />
-        <div className="bg-white dark:bg-slate-800/40 p-8 rounded-[2.5rem] border border-slate-200 dark:border-slate-700/50 backdrop-blur-xl shadow-sm flex flex-col justify-between group transition-all duration-500 hover:shadow-xl">
-             <div className="space-y-6">
-                <div className="p-4 bg-purple-600/10 rounded-2xl text-purple-600 shadow-inner group-hover:scale-110 transition-transform duration-500 self-start w-fit">
-                    <Layers size={28} />
-                </div>
-                <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Total Logic Events</p>
-                    <h3 className="text-4xl font-black text-slate-900 dark:text-white ghost-blur tracking-tighter leading-none">
-                        {transactions.length} <span className="text-xl text-slate-400 uppercase tracking-widest font-black ml-2">Tx</span>
-                    </h3>
-                </div>
-             </div>
-             <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700/50">
-                <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-400">Captured in Buffer</span>
-             </div>
-        </div>
+    <div className="space-y-12 animate-in fade-in duration-700">
+      {/* Prime Signal Matrix */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-2">
+        <InstitutionalStatCard 
+            title="Ported Outflow" 
+            value={totalCalculatedSpending} 
+            icon={CreditCard} 
+            variant="emerald" 
+            originLabel={sourceName}
+            subValue="Extracted Stream"
+        />
+        <InstitutionalStatCard title="Audit Depth" value={transactions.length} icon={Layers} variant="purple" isCurrency={false} precision={0} subValue="Extracted Events" />
+        <InstitutionalStatCard title="High Contrast" value={topTransactions[0]?.amount || 0} icon={Zap} variant="rose" subValue="Peak Node Impact" />
       </div>
 
-      {/* Category Summary Matrix (Institutional Layout) */}
-      <div className="px-2 space-y-8">
-        <div className="flex items-center gap-4">
-            <div className="w-1 h-6 bg-amber-500 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Category Summary</h3>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {categoryData.map((item, index) => {
-                const share = totalCalculatedSpending > 0 ? (item.value / totalCalculatedSpending) * 100 : 0;
-                const color = COLORS[index % COLORS.length];
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 px-2">
+        {/* Allocation Geometry */}
+        <div className="xl:col-span-8">
+            <div className="bg-slate-950 p-10 rounded-[3rem] border border-slate-900 shadow-2xl relative overflow-hidden min-h-[520px] flex flex-col">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-[120px] -mr-48 -mt-48 animate-pulse"></div>
                 
-                return (
-                    <div key={item.name} className="bg-white dark:bg-slate-800/40 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-700/50 backdrop-blur-xl shadow-sm hover:shadow-lg transition-all group relative overflow-hidden">
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-2 h-2 rounded-full shadow-[0_0_8px_currentColor]" style={{ backgroundColor: color, color }}></div>
-                            <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">{item.name}</span>
-                        </div>
-                        <div className="mb-8">
-                            <h4 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter font-mono ghost-blur">
-                                {formatBaseCurrency(item.value).replace(/\.00$/, '')}
-                            </h4>
-                        </div>
-                        <div className="pt-6 border-t border-slate-50 dark:border-slate-700/50 flex justify-between items-center">
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Share of Spend</span>
-                            <span className="text-xs font-black text-blue-600 dark:text-blue-400 font-mono">{share.toFixed(1)}%</span>
+                <div className="flex items-center justify-between mb-12 relative z-10">
+                    <div className="space-y-1">
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tight">Yield Destruction</h3>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Capital Distribution Audit</p>
+                    </div>
+                    <div className="p-3 bg-white/5 rounded-2xl text-blue-500 border border-white/5"><Sparkles size={20} /></div>
+                </div>
+
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
+                    <div className="h-full relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie 
+                                    data={categoryData} 
+                                    cx="50%" cy="50%" 
+                                    innerRadius={90} 
+                                    outerRadius={120} 
+                                    paddingAngle={6} 
+                                    dataKey="value" 
+                                    stroke="none"
+                                >
+                                    {categoryData.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.8} className="hover:fill-opacity-100 transition-all duration-300 outline-none" />
+                                    ))}
+                                </Pie>
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '1.5rem', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)', backgroundColor: '#0f172a', padding: '1rem' }} 
+                                    itemStyle={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#fff' }} 
+                                    formatter={(value: number) => [formatBaseCurrency(value), '']} 
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-4">
+                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Total Volume</p>
+                            <p className="text-2xl font-black text-white font-mono tracking-tighter">
+                                <PrivacyValue value={totalCalculatedSpending} />
+                            </p>
                         </div>
                     </div>
-                );
-            })}
-            {categoryData.length === 0 && (
-                <div className="col-span-full py-16 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2rem] opacity-30 uppercase font-black text-[10px] tracking-[0.4em] italic">
-                    Establish Category Logic to Hydrate Matrix
+                    
+                    <div className="space-y-6">
+                        {categoryData.slice(0, 5).map((item, index) => (
+                            <div key={item.name} className="group/row">
+                                <div className="flex justify-between items-end mb-2">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-1.5 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest truncate max-w-[140px]">{item.name}</span>
+                                    </div>
+                                    <PrivacyValue value={item.value} className="text-xs font-black text-white font-mono" />
+                                </div>
+                                <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden p-0.5 shadow-inner">
+                                    <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${(item.value / (totalCalculatedSpending || 1)) * 100}%`, backgroundColor: COLORS[index % COLORS.length] }}></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-            )}
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 px-2">
-        {/* Visualization Component */}
-        <div className="lg:col-span-7 bg-white dark:bg-slate-800/40 p-10 rounded-[3.5rem] border border-slate-200 dark:border-slate-700/50 backdrop-blur-xl shadow-sm flex flex-col h-[500px] relative overflow-hidden group">
-          <div className="flex items-center gap-4 mb-10 relative z-10">
-              <div className="p-3.5 bg-indigo-600/10 rounded-2xl text-indigo-600 border border-indigo-600/20 shadow-inner">
-                  <Zap size={24} />
-              </div>
-              <div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Yield Destruction</h3>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Allocation Map</p>
-              </div>
-          </div>
-          
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-12 items-center relative z-10">
-            <div className="h-full relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={categoryData} cx="50%" cy="50%" innerRadius={85} outerRadius={110} paddingAngle={4} dataKey="value" stroke="none">
-                    {categoryData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.8} className="hover:fill-opacity-100 transition-all duration-300 outline-none" />
+                <div className="mt-10 pt-8 border-t border-white/5 flex items-center justify-between opacity-40 relative z-10">
+                    <div className="flex items-center gap-3">
+                        <Terminal size={12} className="text-blue-500" />
+                        <span className="text-[8px] font-black uppercase tracking-[0.5em] text-slate-500">Ingestion_Matrix_Stable</span>
+                    </div>
+                    <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest">{new Date().toLocaleDateString()}</span>
+                </div>
+            </div>
+        </div>
+
+        {/* High Magnitude Buffer */}
+        <div className="xl:col-span-4">
+            <div className="bg-white dark:bg-slate-800/40 p-10 rounded-[3rem] border border-slate-200 dark:border-slate-700/50 backdrop-blur-xl shadow-sm flex flex-col h-full group">
+                <div className="flex items-center gap-4 mb-10">
+                    <div className="p-3.5 bg-rose-600/10 rounded-2xl text-rose-600 border border-rose-600/20 shadow-inner">
+                        <Activity size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Anomalies</h3>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">High Magnitude Hits</p>
+                    </div>
+                </div>
+                
+                <div className="space-y-4 flex-1">
+                    {topTransactions.map((t) => (
+                        <div key={t.id} className="p-5 bg-slate-50 dark:bg-slate-900/50 rounded-[1.75rem] border border-slate-100 dark:border-slate-800 hover:border-blue-500/30 transition-all group/hit shadow-inner">
+                            <p className="text-xs font-black text-slate-900 dark:text-white truncate uppercase tracking-tight leading-tight mb-3">{t.description}</p>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]"></div>
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{t.category}</span>
+                                </div>
+                                <PrivacyValue value={t.amount} className="text-sm font-black text-slate-900 dark:text-white font-mono" />
+                            </div>
+                        </div>
                     ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: '1.5rem', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)', backgroundColor: '#0f172a', padding: '1rem' }} itemStyle={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#fff' }} formatter={(value: number) => [formatBaseCurrency(value), '']} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-4">
-                 <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Total Volume</p>
-                 <p className="text-lg font-black text-slate-900 dark:text-white font-mono">{formatBaseCurrency(totalCalculatedSpending).replace(/\.00$/, '')}</p>
-              </div>
-            </div>
-            <div className="space-y-5">
-              {categoryData.slice(0, 5).map((item, index) => (
-                <div key={item.name} className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                    <span className="text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{item.name}</span>
-                    <span className="text-slate-900 dark:text-white font-mono">{formatBaseCurrency(item.value).replace(/\.00$/, '')}</span>
-                  </div>
-                  <div className="w-full bg-slate-100 dark:bg-slate-900 h-1.5 rounded-full overflow-hidden p-0.5">
-                    <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${(item.value / (totalCalculatedSpending || 1)) * 100}%`, backgroundColor: COLORS[index % COLORS.length] }}></div>
-                  </div>
+                    {topTransactions.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center opacity-20 py-20">
+                            <Zap size={40} className="mb-4" />
+                            <p className="text-[8px] font-black uppercase tracking-[0.4em]">Zero Spike Detections</p>
+                        </div>
+                    )}
                 </div>
-              ))}
-              {categoryData.length > 5 && (
-                <p className="text-[9px] text-center text-slate-400 font-black uppercase tracking-[0.2em] pt-4 opacity-60 italic">
-                  + {categoryData.length - 5} Supplemental Vectors Detected
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* High Magnitude Transactions */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-800/40 p-10 rounded-[3.5rem] border border-slate-200 dark:border-slate-700/50 backdrop-blur-xl shadow-sm flex flex-col h-[500px] group">
-          <div className="flex items-center gap-4 mb-10">
-              <div className="p-3.5 bg-rose-600/10 rounded-2xl text-rose-600 border border-rose-600/20 shadow-inner">
-                  <Activity size={24} />
-              </div>
-              <div>
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight uppercase">High Magnitude Hits</h3>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mt-1">Threshold Analysis</p>
-              </div>
-          </div>
-          <div className="space-y-4 flex-1 overflow-y-auto no-scrollbar pr-1">
-            {topTransactions.map((t) => (
-              <div key={t.id} className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-blue-500/30 transition-all group/hit shadow-inner">
-                <div className="flex-1 min-w-0 pr-4">
-                  <p className="text-sm font-black text-slate-900 dark:text-white truncate uppercase tracking-tight group-hover/hit:text-blue-500 transition-colors">{t.description}</p>
-                  <div className="flex items-center gap-3 mt-2">
-                    <span className="text-[8px] text-slate-400 font-black uppercase tracking-widest bg-white dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-100 dark:border-slate-700 shadow-sm">{t.date}</span>
-                    <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest">{t.category}</span>
-                  </div>
+                
+                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700/50 flex items-center gap-2">
+                    <div className="w-1 h-1 rounded-full bg-rose-500 animate-pulse"></div>
+                    <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest">Global Threshold Monitoring Active</span>
                 </div>
-                <p className="text-lg font-black text-slate-900 dark:text-white font-mono ghost-blur">{formatBaseCurrency(t.amount).replace(/\.00$/, '')}</p>
-              </div>
-            ))}
-          </div>
+            </div>
         </div>
       </div>
     </div>

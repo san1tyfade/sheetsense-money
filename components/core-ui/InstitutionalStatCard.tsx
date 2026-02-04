@@ -1,6 +1,7 @@
-import React, { memo, useRef } from 'react';
-import { TrendingUp, TrendingDown, Terminal, Lock } from 'lucide-react';
-import { useFinancialStore } from '../../context/FinancialContext';
+import React, { memo, useRef, useMemo } from 'react';
+import { TrendingUp, TrendingDown, Terminal, Lock, Box } from 'lucide-react';
+import { useSync } from '../../context/SyncContext';
+import { useSettings } from '../../context/SystemContext';
 import { PrivacyValue } from './PrivacyValue';
 import { haptics } from '../../services/infrastructure/HapticService';
 
@@ -18,48 +19,36 @@ interface InstitutionalStatCardProps {
     isCurrency?: boolean;
     precision?: number;
     onClick?: () => void;
+    originLabel?: string | null;
 }
 
-/**
- * InstitutionalStatCard
- * Unitary authority for high-level metrics. Consolidates haptics, 
- * visual trends, and Ghost Mode compliance.
- */
+const THEMES: Record<StatVariant, { bg: string, text: string, glow: string, border: string, bar: string }> = {
+    blue: { bg: 'bg-blue-600/10', text: 'text-blue-600 dark:text-blue-400', glow: 'bg-blue-600/10', border: 'hover:border-blue-600/40', bar: 'bg-blue-500' },
+    emerald: { bg: 'bg-emerald-600/10', text: 'text-emerald-600 dark:text-emerald-400', glow: 'bg-emerald-600/10', border: 'hover:border-emerald-600/40', bar: 'bg-emerald-500' },
+    purple: { bg: 'bg-purple-600/10', text: 'text-purple-600 dark:text-purple-400', glow: 'bg-purple-600/10', border: 'hover:border-purple-600/40', bar: 'bg-purple-500' },
+    rose: { bg: 'bg-rose-600/10', text: 'text-rose-600 dark:text-rose-400', glow: 'bg-rose-600/10', border: 'hover:border-rose-600/40', bar: 'bg-rose-500' },
+    amber: { bg: 'bg-amber-600/10', text: 'text-amber-600 dark:text-amber-400', glow: 'bg-amber-600/10', border: 'hover:border-amber-600/40', bar: 'bg-amber-500' },
+    indigo: { bg: 'bg-indigo-600/10', text: 'text-indigo-600 dark:text-indigo-400', glow: 'bg-indigo-600/10', border: 'hover:border-indigo-600/40', bar: 'bg-indigo-500' }
+};
+
 export const InstitutionalStatCard = memo(({ 
-    title, value, icon: Icon, variant = 'blue', isLoading, change, subValue, isHistorical, isCurrency = true, precision = 0, onClick 
+    title, value, icon: Icon, variant = 'blue', isLoading, change, subValue, isHistorical, isCurrency = true, precision = 0, onClick, originLabel 
 }: InstitutionalStatCardProps) => {
-    const { sync, densityMode } = useFinancialStore();
+    const { densityMode } = useSettings();
     const isCompact = densityMode === 'COMPACT';
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    const theme = THEMES[variant];
+    const isPositive = change !== undefined && change !== null && change > 0;
+    const isNegative = change !== undefined && change !== null && change < 0;
+
     const handleInteractionStart = () => {
-        if (onClick) {
-            haptics.click('soft');
-        } else {
-            // Secret haptic sync shortcut
-            timerRef.current = setTimeout(() => {
-                haptics.pulse('light');
-                sync();
-            }, 600);
-        }
+        if (onClick) haptics.click('soft');
     };
 
     const handleInteractionEnd = () => {
         if (timerRef.current) clearTimeout(timerRef.current);
     };
-
-    const themes: Record<StatVariant, { bg: string, text: string, glow: string, border: string, bar: string }> = {
-        blue: { bg: 'bg-blue-600/10', text: 'text-blue-600 dark:text-blue-400', glow: 'bg-blue-600/10', border: 'hover:border-blue-600/40', bar: 'bg-blue-500' },
-        emerald: { bg: 'bg-emerald-600/10', text: 'text-emerald-600 dark:text-emerald-400', glow: 'bg-emerald-600/10', border: 'hover:border-emerald-600/40', bar: 'bg-emerald-500' },
-        purple: { bg: 'bg-purple-600/10', text: 'text-purple-600 dark:text-purple-400', glow: 'bg-purple-600/10', border: 'hover:border-purple-600/40', bar: 'bg-purple-500' },
-        rose: { bg: 'bg-rose-600/10', text: 'text-rose-600 dark:text-rose-400', glow: 'bg-rose-600/10', border: 'hover:border-rose-600/40', bar: 'bg-rose-500' },
-        amber: { bg: 'bg-amber-600/10', text: 'text-amber-600 dark:text-amber-400', glow: 'bg-amber-600/10', border: 'hover:border-amber-600/40', bar: 'bg-amber-500' },
-        indigo: { bg: 'bg-indigo-600/10', text: 'text-indigo-600 dark:text-indigo-400', glow: 'bg-indigo-600/10', border: 'hover:border-indigo-600/40', bar: 'bg-indigo-500' }
-    };
-
-    const theme = themes[variant];
-    const isPositive = change !== undefined && change !== null && change > 0;
-    const isNegative = change !== undefined && change !== null && change < 0;
 
     return (
         <div 
@@ -88,6 +77,12 @@ export const InstitutionalStatCard = memo(({
                             <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border-2 font-mono font-black text-[9px] md:text-[10px] tracking-tighter ${isPositive ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : isNegative ? 'bg-rose-500/10 border-rose-500/20 text-rose-600' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
                                 {isPositive ? <TrendingUp size={10} /> : isNegative ? <TrendingDown size={10} /> : null}
                                 {isPositive ? '+' : ''}{change.toFixed(1)}%
+                            </div>
+                        )}
+                        {originLabel && (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-950 rounded-xl border border-slate-800 shadow-xl animate-in zoom-in-95 duration-500">
+                                <Box size={10} className="text-blue-500" />
+                                <span className="text-[7px] font-black text-white uppercase tracking-widest">{originLabel}</span>
                             </div>
                         )}
                     </div>
