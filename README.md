@@ -38,10 +38,14 @@ This project is configured for automated deployment to Google Cloud Run using Gi
 
 ### Deployment Workflow
 
-The deployment is triggered automatically on every push to the `main` branch. The workflow defined in `.github/workflows/deploy.yaml` will:
-1. Build the Docker image (injecting the `GEMINI_API_KEY`).
-2. Push the image to Google Artifact Registry.
-3. Deploy the service to Cloud Run.
+The deployment is triggered automatically on every push to the `main` or `test` branch. The workflow defined in `.github/workflows/deploy.yaml` will:
+1. Determine the target service:
+   - `main` branch -> `sheetsense-app`
+   - `test` branch -> `sheetsense-app-test`
+2. Build the Docker image (injecting the `GEMINI_API_KEY`).
+3. Push the image to Google Artifact Registry.
+4. Deploy the service to Cloud Run.
 
 **Note**: Since the API key is embedded in the build (client-side app), ensure your API key has appropriate restrictions in the Google Cloud Console (e.g., restrict by HTTP referrer).
+
 

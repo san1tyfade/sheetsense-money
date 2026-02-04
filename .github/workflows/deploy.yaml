@@ -4,13 +4,12 @@ on:
   push:
     branches:
       - main
+      - test
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   # Update this region to your preferred Google Cloud region
   REGION: us-central1 
-  # Update this to your service name
-  SERVICE: sheetsense-app 
   # Artifact Registry Repository Name
   REPO_NAME: sheetsense-repo
 
@@ -26,10 +25,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Determine Service Name based on branch
+      - name: Set Service Name
+        run: |
+          if [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "SERVICE=sheetsense-app" >> $GITHUB_ENV
+          else
+            echo "SERVICE=sheetsense-app-${{ github.ref_name }}" >> $GITHUB_ENV
+          fi
+
       # Verify prerequisites
-      # You need to configure Workload Identity Federation or use a Service Account Key JSON
-      # This example assumes Service Account Key JSON for simplicity in initial setup, 
-      # but WIF is recommended for production.
       - name: Google Auth
         id: auth
         uses: 'google-github-actions/auth@v2'
@@ -60,4 +65,4 @@ jobs:
           flags: '--allow-unauthenticated'
 
       - name: Show Output
-        run: echo ${{ steps.deploy.outputs.url }}
+        run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
