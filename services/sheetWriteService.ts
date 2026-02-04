@@ -1,9 +1,8 @@
-
-import { Trade, Asset, Subscription, BankAccount, LedgerCommitPayload, Transaction, JournalEntry } from '../types';
+import { Transaction, LedgerCommitPayload } from '../types';
 import { parseNumber, normalizeHeader, MONTH_NAMES_TITLED } from './parsers/parserUtils';
 import { googleClient } from './infrastructure/GoogleClient';
-import { TemporalSovereign } from './temporalService';
 import { REGISTRY_SCHEMAS, SchemaDefinition } from '../config/RegistrySchemas';
+import { resolveTabName } from './sheetService';
 import { SchemaMapper } from './data/SchemaMapper';
 
 const BASE_URL = 'https://sheets.googleapis.com/v4/spreadsheets';
@@ -16,19 +15,12 @@ const assertNotArchive = (tabName: string) => {
 const fetchHeaders = async (sheetId: string, tabName: string): Promise<string[]> => {
     const data = await googleClient.getRange(sheetId, `'${tabName}'!A1:Z10`);
     const rows = data.values || [];
+    // Heuristic: Find row with most non-numeric strings
     return rows.reduce((best: string[], current: string[]) => {
         const currentCount = current.filter(v => v && isNaN(Number(v))).length;
         const bestCount = best.filter(v => v && isNaN(Number(v))).length;
         return currentCount > bestCount ? current : best;
     }, rows[0]) || [];
-};
-
-const resolveTabName = async (spreadsheetId: string, tabName: string): Promise<string> => {
-    try {
-        const data = await googleClient.request(`${BASE_URL}/${spreadsheetId}?sheets(properties/title)`);
-        const match = data.sheets?.find((s: any) => s.properties?.title.toLowerCase() === tabName.toLowerCase());
-        return match ? match.properties.title : tabName;
-    } catch { return tabName; }
 };
 
 export const commitItemToSheet = async (sheetId: string, tabName: string, item: any, schemaId: string) => {
@@ -38,18 +30,24 @@ export const commitItemToSheet = async (sheetId: string, tabName: string, item: 
 
     const resolvedTab = await resolveTabName(sheetId, tabName);
     const headers = await fetchHeaders(sheetId, resolvedTab);
+
+    // Use Centralized Mapper
     const rowValues = SchemaMapper.toRow(schema, item, headers);
 
     const isUpdate = item.rowIndex !== undefined;
     if (isUpdate) {
         const range = encodeURIComponent(`'${resolvedTab}'!A${item.rowIndex + 1}`);
         await googleClient.request(`${BASE_URL}/${sheetId}/values/${range}?valueInputOption=USER_ENTERED`, {
-            method: 'PUT', body: { values: [rowValues] }
+            method: 'PUT',
+            body: { values: [rowValues] }
         });
     } else {
         const range = encodeURIComponent(`'${resolvedTab}'!A:Z`);
         const url = `${BASE_URL}/${sheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
-        await googleClient.request(url, { method: 'POST', body: { values: [rowValues] } });
+        await googleClient.request(url, {
+            method: 'POST',
+            body: { values: [rowValues] }
+        });
     }
     return true;
 };
@@ -58,12 +56,26 @@ export const deleteRowFromSheet = async (sheetId: string, tabName: string, rowIn
     assertNotArchive(tabName);
     const resolvedTab = await resolveTabName(sheetId, tabName);
     const data = await googleClient.request(`${BASE_URL}/${sheetId}?fields=sheets.properties`);
-    const gridId = data.sheets?.find((s: any) => s.properties?.title.toLowerCase() === tabName.toLowerCase())?.properties.sheetId;
+    const gridId = data.sheets?.find((s: any) => s.properties?.title.toLowerCase() === resolvedTab.toLowerCase())?.properties.sheetId;
+
     if (gridId === undefined) throw new Error(`Grid ID not found for ${tabName}`);
 
     await googleClient.request(`${BASE_URL}/${sheetId}:batchUpdate`, {
         method: 'POST',
-        body: { requests: [{ deleteDimension: { range: { sheetId: gridId, dimension: "ROWS", startIndex: rowIndex, endIndex: rowIndex + 1 } } }] }
+        body: {
+            requests: [
+                {
+                    deleteDimension: {
+                        range: {
+                            sheetId: gridId,
+                            dimension: "ROWS",
+                            startIndex: rowIndex,
+                            endIndex: rowIndex + 1
+                        }
+                    }
+                }
+            ]
+        }
     });
     return true;
 };
@@ -74,10 +86,14 @@ export const appendJournalEntries = async (sheetId: string, tabName: string, sou
     const schema = REGISTRY_SCHEMAS.journal;
     const resolvedTab = await resolveTabName(sheetId, tabName);
     const headers = await fetchHeaders(sheetId, resolvedTab);
+
+    // Use Centralized Mapper
     const rows = entries.map(e => SchemaMapper.toRow(schema, { ...e, source: sourceName }, headers));
+
     const range = encodeURIComponent(`'${resolvedTab}'!A:Z`);
     await googleClient.request(`${BASE_URL}/${sheetId}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
-        method: 'POST', body: { values: rows }
+        method: 'POST',
+        body: { values: rows }
     });
     return true;
 };
@@ -85,30 +101,64 @@ export const appendJournalEntries = async (sheetId: string, tabName: string, sou
 export const batchUpdateLedgerValues = async (sheetId: string, tabName: string, payload: LedgerCommitPayload) => {
     assertNotArchive(tabName);
     const resolvedTab = await resolveTabName(sheetId, tabName);
-    const col = String.fromCharCode(66 + payload.monthIndex);
+
+    const col = String.fromCharCode(66 + payload.monthIndex); // B=66, C=67... for Jan=0...
+
+    // 1. Fetch Categories (A) and Current Values (Col) to Merge if needed
     const [headerRes, currentValuesRes] = await Promise.all([
         googleClient.getRange(sheetId, `'${resolvedTab}'!A:A`),
-        payload.strategy === 'MERGE' ? googleClient.getRange(sheetId, `'${resolvedTab}'!${col}:${col}`) : Promise.resolve({ values: [] })
+        payload.strategy === 'MERGE'
+            ? googleClient.getRange(sheetId, `'${resolvedTab}'!${col}:${col}`)
+            : Promise.resolve({ values: [] })
     ]);
+
     const rows = headerRes.values || [];
     const currentValues = currentValuesRes.values || [];
     const dataUpdates: any[] = [];
+
     payload.updates.forEach(u => {
+        // Find row by Category Match
         const idx = rows.findIndex((r: any[]) => (r[0] || '').trim().toLowerCase() === u.ledgerSubCategory.toLowerCase());
+
         if (idx !== -1) {
             let val = u.value;
-            if (payload.strategy === 'MERGE') val += parseNumber(currentValues[idx]?.[0]);
-            dataUpdates.push({ range: `'${resolvedTab}'!${col}${idx + 1}`, values: [[val]] });
+            if (payload.strategy === 'MERGE') {
+                const existing = parseNumber(currentValues[idx]?.[0]);
+                val += existing;
+            }
+
+            // Push update
+            dataUpdates.push({
+                range: `'${resolvedTab}'!${col}${idx + 1}`,
+                values: [[val]]
+            });
         }
     });
+
     if (dataUpdates.length > 0) {
-        await googleClient.request(`${BASE_URL}/${sheetId}/values:batchUpdate`, { method: 'POST', body: { valueInputOption: 'USER_ENTERED', data: dataUpdates } });
+        await googleClient.request(`${BASE_URL}/${sheetId}/values:batchUpdate`, {
+            method: 'POST',
+            body: {
+                valueInputOption: 'USER_ENTERED',
+                data: dataUpdates
+            }
+        });
     }
+
     return true;
 };
 
 export const updateLedgerValue = async (sheetId: string, tabName: string, category: string, subCategory: string, monthIndex: number, value: number) => {
-    return batchUpdateLedgerValues(sheetId, tabName, { monthIndex, strategy: 'OVERWRITE', updates: [{ ledgerCategory: category, ledgerSubCategory: subCategory, value }] });
+    // Wrapper for backward compatibility or single updates
+    return batchUpdateLedgerValues(sheetId, tabName, {
+        monthIndex,
+        strategy: 'OVERWRITE',
+        updates: [{
+            ledgerCategory: category,
+            ledgerSubCategory: subCategory,
+            value
+        }]
+    });
 };
 
 /**
