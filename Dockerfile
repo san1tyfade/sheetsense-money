@@ -1,32 +1,34 @@
-# Stage 1: Build the React application
-FROM node:22 AS builder
+# Build stage
+FROM node:20-alpine as build
 
 WORKDIR /app
 
-# Copy package.json and install dependencies
-COPY package.json package-lock.json ./
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
 RUN npm ci
 
-# Copy the rest of the application code
+# Copy source code
 COPY . .
 
-# Create placeholder .env to prevent build errors if variables are referenced
-RUN echo "GEMINI_API_KEY=PLACEHOLDER" > .env
+# Build argument for API key
+ARG GEMINI_API_KEY
+ENV GEMINI_API_KEY=$GEMINI_API_KEY
 
 # Build the application
 RUN npm run build
 
-# Stage 2: Serve the application using Nginx
+# Production stage
 FROM nginx:alpine
 
-# Copy built assets from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy built assets from build stage
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy custom Nginx configuration
+# Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 8080 (Cloud Run default)
 EXPOSE 8080
 
-# Nginx runs in foreground by default in this image
 CMD ["nginx", "-g", "daemon off;"]
