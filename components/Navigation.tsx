@@ -1,19 +1,24 @@
+
 import React from 'react';
 import { ViewState } from '../types';
 import { 
   RefreshCw, Clock, Lock, Eye, EyeOff, Moon, Sun, Search, UploadCloud, Activity, Layers, Settings 
 } from 'lucide-react';
-import { useFinancialStore } from '../context/FinancialContext';
+// Import useFinanceData to access the sync method which is missing in useSync
+import { useSettings, useSync, useIdentity, useFinanceData } from '../context/FinancialContext';
 import { VIEW_METADATA, DIRECTORATES } from '../config/ViewMetadata';
 import { haptics } from '../services/infrastructure/HapticService';
 
 export const Navigation: React.FC = () => {
-  const store = useFinancialStore();
   const { 
-    currentView, setView, sync, commitDelta, isDirty, dirtyCount, 
-    isSyncing, lastUpdated, isDarkMode, setIsDarkMode, authSession, 
-    isGhostMode, setIsGhostMode, setIsSearchOpen 
-  } = store;
+    currentView, setView, isDarkMode, setIsDarkMode, 
+    isGhostMode, setIsGhostMode, setIsSearchOpen, lastUpdatedStr
+  } = useSettings();
+  
+  // Fix: Separated sync from useSync as it belongs to useFinanceData context
+  const { isDirty, dirtyCount, isSyncing } = useSync();
+  const { sync } = useFinanceData();
+  const { authSession } = useIdentity();
   
   const isLoggedIn = !!authSession;
   const toggleTheme = () => setIsDarkMode(prev => !prev);
@@ -21,11 +26,11 @@ export const Navigation: React.FC = () => {
   
   const handleSyncAction = () => {
       haptics.pulse('light');
-      if (isDirty) commitDelta();
-      else sync();
+      sync();
   };
 
   const viewArray = Object.values(VIEW_METADATA);
+  const lastUpdated = lastUpdatedStr ? new Date(lastUpdatedStr) : null;
 
   return (
     <nav className="bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 md:w-72 md:h-screen md:border-r md:border-b-0 flex-shrink-0 flex md:flex-col fixed md:sticky md:top-0 z-50 w-full bottom-0 md:bottom-auto transition-colors duration-500 tabular-nums">
@@ -115,17 +120,17 @@ export const Navigation: React.FC = () => {
             onClick={handleSyncAction}
             disabled={isSyncing}
             className={`w-full flex items-center justify-center space-x-3 py-5 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all border-2
-            ${isSyncing ? 'bg-slate-100 dark:bg-slate-900 border-transparent text-slate-400 cursor-wait' : 
-              isDirty ? 'bg-amber-500 border-amber-400 text-white hover:bg-amber-600 shadow-xl shadow-amber-500/20' :
+            ${isSyncing ? 'bg-slate-100 dark:bg-slate-900 border-transparent text-blue-500 cursor-wait' : 
+              isDirty ? 'bg-blue-600 border-blue-500 text-white shadow-xl shadow-blue-500/20' :
               'bg-white dark:bg-slate-950 border-slate-900 dark:border-white text-slate-950 dark:text-white hover:bg-slate-950 hover:text-white dark:hover:bg-white dark:hover:text-slate-950 active:scale-95 shadow-xl'}`}
         >
-            {isDirty && !isSyncing ? <UploadCloud size={14} strokeWidth={3} className="animate-bounce" /> : <RefreshCw size={14} className={isSyncing ? "animate-spin" : ""} strokeWidth={3} />}
-            <span>{isSyncing ? "Transmitting" : isDirty ? `Commit Delta [${dirtyCount}]` : "Sync Architecture"}</span>
+            {isSyncing ? <RefreshCw size={14} className="animate-spin" strokeWidth={3} /> : isDirty ? <UploadCloud size={14} strokeWidth={3} className="animate-bounce" /> : <RefreshCw size={14} strokeWidth={3} />}
+            <span>{isSyncing ? "Auto-Sync: Active" : isDirty ? `Pending Uplink [${dirtyCount}]` : "Auto-Sync: Nominal"}</span>
         </button>
         {lastUpdated && (
             <div className="flex flex-col items-center gap-1.5 opacity-40">
                 <div className="flex items-center gap-2 text-[8px] font-black uppercase tracking-widest text-slate-500">
-                    <Clock size={10} /> Last Uplink
+                    <Clock size={10} /> Last Handshake
                 </div>
                 <span className="text-[9px] font-mono font-bold text-slate-400 uppercase">{lastUpdated.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
             </div>

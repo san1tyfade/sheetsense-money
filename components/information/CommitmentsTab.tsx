@@ -1,9 +1,8 @@
-
 import React, { useMemo } from 'react';
 import { Subscription, DebtEntry } from '../../types';
 import { CreditCard, Flame, TrendingDown, Plus, Pencil, Trash2, Terminal, Activity } from 'lucide-react';
 import { formatBaseCurrency } from '../../services/currencyService';
-import { FinancialEngine } from '../../services/math/FinancialEngine';
+import { calculateMonthlyBurn } from '../../services/math/financialMath';
 import { GlassCard } from '../core-ui/GlassCard';
 import { InstitutionalTable, InstitutionalTableHead, InstitutionalTableBody } from '../core-ui/InstitutionalTable';
 
@@ -32,7 +31,7 @@ export const CommitmentsTab: React.FC<CommitmentsTabProps> = ({
 
   const subStats = useMemo(() => {
     const active = subscriptions.filter(s => s.active);
-    const cost = active.reduce((acc, s) => acc + FinancialEngine.calculateMonthlyBurn(s.cost, s.period), 0);
+    const cost = active.reduce((acc, s) => acc + calculateMonthlyBurn(s.cost, s.period), 0);
     return { count: active.length, monthlyCost: cost };
   }, [subscriptions]);
 

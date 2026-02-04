@@ -1,4 +1,3 @@
-import { IncomeEntry, ExpenseEntry } from '../../types';
 import { AppError, IEP } from '../infrastructure/ErrorHandler';
 
 /**
@@ -9,6 +8,7 @@ import { AppError, IEP } from '../infrastructure/ErrorHandler';
 export class FinancialEngine {
     /**
      * Standardized Rounding Protocol
+     * Prevents floating point errors in financial sums.
      */
     static round(value: number, precision: number = 2): number {
         const factor = Math.pow(10, precision);
@@ -16,7 +16,7 @@ export class FinancialEngine {
     }
 
     /**
-     * Percentage Change calculation.
+     * Percentage Change calculation with safety interlocks.
      */
     static change(current: number, previous: number): number | null {
         if (previous === 0) return null;
@@ -25,6 +25,7 @@ export class FinancialEngine {
 
     /**
      * Median Calculation
+     * Used for establishing "Typical Month" baselines.
      */
     static median(values: number[]): number {
         if (!values || values.length === 0) return 0;
@@ -53,6 +54,7 @@ export class FinancialEngine {
         const gain = endValue - startValue - netFlow;
         const averageCapital = startValue + (netFlow / 2);
         
+        // Logical Guardrail: Prevent division by near-zero capital which causes infinity/NaN in percentage
         if (Math.abs(averageCapital) < 0.01 && Math.abs(startValue) < 0.01) {
             return { gain: this.round(gain), percentage: 0 };
         }
@@ -61,6 +63,7 @@ export class FinancialEngine {
             ? (gain / Math.abs(averageCapital)) * 100 
             : (startValue > 0 ? (gain / startValue) * 100 : 0);
             
+        // Check for unrealistic values suggesting data corruption
         if (isNaN(percentage) || Math.abs(percentage) > 1000000) {
             throw new AppError(IEP.DMN.VALUATION_OVERFLOW, "Valuation Logic reached an unstable state.", 'RECOVERABLE', { startValue, endValue, netFlow });
         }
@@ -72,22 +75,11 @@ export class FinancialEngine {
     }
 
     /**
-     * Growth Velocity ($ per day)
+     * Growth Velocity
      */
     static velocity(startValue: number, endValue: number, days: number): number {
         if (days <= 0) return 0;
         return this.round((endValue - startValue) / days);
-    }
-
-    /**
-     * Growth Velocity ($ per day) for a series
-     */
-    static growthVelocity(series: { date: string; totalValue: number }[]): number {
-        if (series.length < 2) return 0;
-        const start = series[0];
-        const end = series[series.length - 1];
-        const days = (new Date(end.date).getTime() - new Date(start.date).getTime()) / (1000 * 60 * 60 * 24);
-        return this.velocity(start.totalValue, end.totalValue, days);
     }
 
     /**
@@ -105,78 +97,5 @@ export class FinancialEngine {
         });
         
         return this.round(maxDD, 2);
-    }
-
-    /**
-     * Standardized period-based burn calculation.
-     */
-    static calculateMonthlyBurn(cost: number, period: string): number {
-        const p = period.toLowerCase();
-        let monthly = 0;
-        if (p === 'monthly') monthly = cost;
-        else if (p === 'yearly') monthly = cost / 12;
-        else if (p === 'weekly') monthly = cost * 4.33;
-        return this.round(monthly);
-    }
-
-    /**
-     * NET WORTH ATTRIBUTION
-     */
-    static calculateNetWorthAttribution(
-      currentNW: number,
-      startValue: number,
-      incomeData: IncomeEntry[],
-      expenseData: ExpenseEntry[],
-      anchorISO: string
-    ) {
-      const periodIncome = incomeData
-        .filter(d => d.date >= anchorISO)
-        .reduce((acc, d) => acc + (d.amount || 0), 0);
-      
-      const periodExpense = expenseData
-        .filter(d => d.date >= anchorISO)
-        .reduce((acc, d) => acc + (d.total || 0), 0);
-
-      const netSavings = periodIncome - periodExpense;
-      const { gain, percentage } = this.dietz(startValue, currentNW, netSavings);
-
-      return {
-        startValue,
-        endValue: currentNW,
-        netContributions: netSavings,
-        marketGain: gain,
-        percentageReturn: percentage
-      };
-    }
-
-    /**
-     * PERIOD TOTALS ENGINE
-     */
-    static calculatePeriodTotals(
-      incomeData: IncomeEntry[], 
-      expenseData: ExpenseEntry[], 
-      year: number
-    ) {
-      const isCurrentYear = year === new Date().getFullYear();
-      const todayISO = new Date().toISOString().split('T')[0];
-
-      const incFiltered = incomeData.filter(d => d.date.startsWith(String(year)));
-      const expFiltered = expenseData.filter(d => d.date.startsWith(String(year)));
-
-      const ytdInc = incFiltered
-        .filter(d => !isCurrentYear || d.date <= todayISO)
-        .reduce((s, d) => s + (d.amount || 0), 0);
-
-      const ytdExp = expFiltered
-        .filter(d => !isCurrentYear || d.date <= todayISO)
-        .reduce((s, d) => s + (d.total || 0), 0);
-
-      const totalInc = incFiltered.reduce((s, d) => s + (d.amount || 0), 0);
-      const totalExp = expFiltered.reduce((s, d) => s + (d.total || 0), 0);
-
-      const savings = ytdInc - ytdExp;
-      const rate = ytdInc > 0 ? (savings / ytdInc) * 100 : 0;
-
-      return { ytdInc, ytdExp, totalInc, totalExp, savings, rate };
     }
 }

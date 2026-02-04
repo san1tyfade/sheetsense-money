@@ -5,8 +5,6 @@ import { IncomeLedger } from './income/IncomeLedger';
 import { useFinancialStore } from '../context/FinancialContext';
 import { useFinancialActions } from '../hooks/useFinancialActions';
 import { ViewHeader } from './core-ui/ViewHeader';
-import { PerspectiveToggle } from './core-ui/PerspectiveToggle';
-import { BarChart2, BookOpen } from 'lucide-react';
 
 type ViewMode = 'ANALYSIS' | 'LEDGER';
 
@@ -17,11 +15,6 @@ export const IncomeView: React.FC = () => {
 
   const [mode, setMode] = useState<ViewMode>('ANALYSIS');
 
-  const modes: { id: ViewMode; label: string; icon: any }[] = [
-    { id: 'ANALYSIS', label: 'Analysis', icon: BarChart2 },
-    { id: 'LEDGER', label: 'Ledger', icon: BookOpen }
-  ];
-
   return (
     <div className="h-full flex flex-col space-y-12 animate-fade-in">
        <ViewHeader 
@@ -29,12 +22,21 @@ export const IncomeView: React.FC = () => {
         titleAccent="Flow"
       />
 
-       <PerspectiveToggle 
-          options={modes}
-          value={mode}
-          onChange={setMode}
-          className="px-2"
-       />
+       <nav className="flex items-center gap-3 px-2 text-base font-black tracking-tight">
+          <button 
+            onClick={() => setMode('ANALYSIS')}
+            className={`transition-all duration-300 hover:text-slate-900 dark:hover:text-white ${mode === 'ANALYSIS' ? 'text-slate-900 dark:text-white scale-105 underline decoration-blue-500 decoration-2 underline-offset-8' : 'text-slate-400'}`}
+          >
+            Analysis
+          </button>
+          <span className="text-slate-200 dark:text-slate-700 font-light text-lg">/</span>
+          <button 
+            onClick={() => setMode('LEDGER')}
+            className={`transition-all duration-300 hover:text-slate-900 dark:hover:text-white ${mode === 'LEDGER' ? 'text-slate-900 dark:text-white scale-105 underline decoration-blue-500 decoration-2 underline-offset-8' : 'text-slate-400'}`}
+          >
+            Ledger
+          </button>
+      </nav>
 
        <div className="flex-1 min-h-0">
            {mode === 'ANALYSIS' ? (

@@ -1,9 +1,9 @@
 import { PortfolioLogEntry } from '../../types';
-import { parseNumber, normalizeHeader } from './parserUtils';
-import { TemporalSovereign } from '../temporalService';
+import { parseNumber, parseFlexibleDate, normalizeHeader } from './parserUtils';
 
 /**
  * Specialized parser for Portfolio Snapshots.
+ * Retained for dynamic column resolution (horizontally expanding accounts).
  */
 export const createPortfolioLogParser = (headers: string[]) => {
     const dateIdx = headers.findIndex(h => normalizeHeader(h) === 'date');
@@ -15,7 +15,7 @@ export const createPortfolioLogParser = (headers: string[]) => {
 
     return (values: string[]): PortfolioLogEntry | null => {
         const dateStr = values[dateIdx];
-        const iso = TemporalSovereign.parseFlexible(dateStr);
+        const iso = parseFlexibleDate(dateStr);
         if (!iso) return null;
 
         const accounts: Record<string, number> = {};

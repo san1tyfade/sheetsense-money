@@ -17,6 +17,9 @@ const mockConfig = {
 
 const mockDispatcher = {
   setAssets: vi.fn(),
+  updateRegistry: vi.fn((key, data) => {
+    if (key === 'assets') mockDispatcher.setAssets(data);
+  }),
   setAuthSession: vi.fn(),
   setLastUpdatedStr: vi.fn()
 };

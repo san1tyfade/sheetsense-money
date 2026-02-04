@@ -6,7 +6,9 @@
     <title>Sheetsense</title>
     <script>
       // Global shim for process.env to prevent reference errors in the browser environment
-      window.process = { env: {} };
+      // Uses a non-destructive check to ensure existing env variables are preserved.
+      window.process = window.process || {};
+      window.process.env = window.process.env || {};
     </script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://cdn.tailwindcss.com"></script>

@@ -1,10 +1,10 @@
+
 import { Asset, NetWorthEntry, ExchangeRates, IncomeEntry, ExpenseEntry, TimeFocus, DebtEntry, CustomDateRange, Investment, Trade } from '../../types';
 import { convertToBase } from '../currencyService';
 import { getAssetMajorClass, AssetMajorClass, isAssetManagedByLiveFeed, isTickerCashEquivalent } from '../domain/classificationHub';
 import { isSafeKey } from '../deterministicUtils';
 import { isDateInWindow } from '../temporalService';
-// Fix: Use FinancialEngine directly for attribution logic
-import { FinancialEngine } from '../math/FinancialEngine';
+import { calculateNetWorthAttribution, calculatePeriodTotals } from '../math/financialMath';
 import { resolveTickerPrice, calculateValuation } from '../domain/valuationEngine';
 
 export const calculateDashboardAggregates = (
@@ -57,8 +57,7 @@ export const calculateDashboardAggregates = (
 export const resolveAttribution = (currentNW: number, history: NetWorthEntry[], incomeData: IncomeEntry[], expenseData: ExpenseEntry[], timeFocus: TimeFocus, customRange?: CustomDateRange, contextYear?: number) => {
     const sortedHistory = [...history].sort((a, b) => a.date.localeCompare(b.date));
     const startEntry = sortedHistory.find(h => isDateInWindow(h.date, timeFocus, customRange, contextYear)) || sortedHistory[0];
-    // Fix: Updated call to use static member of FinancialEngine
-    return FinancialEngine.calculateNetWorthAttribution(currentNW, startEntry?.value || 0, incomeData, expenseData, startEntry?.date || '');
+    return calculateNetWorthAttribution(currentNW, startEntry?.value || 0, incomeData, expenseData, startEntry?.date || '');
 };
 
 export const processNetIncomeTrend = (incomeData: IncomeEntry[], expenseData: ExpenseEntry[], year: number) => {

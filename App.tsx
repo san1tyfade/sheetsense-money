@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigation } from './components/Navigation';
 import { ViewDispatcher } from './components/ViewDispatcher';
 import { GuidedTour } from './components/GuidedTour';
@@ -12,11 +12,13 @@ import { TradeEntryModal } from './components/trades/TradeEntryModal';
 import { AssetEntryModal } from './components/assets/AssetEntryModal';
 import { SubscriptionEntryModal } from './components/information/SubscriptionEntryModal';
 import { AccountEntryModal } from './components/information/AccountEntryModal';
+import { RegistryModal } from './components/information/RegistryModal';
 import { restoreSession, initGoogleAuth } from './services/authService';
 import { useFinancialStore } from './context/FinancialContext';
 import { useFinancialActions } from './hooks/useFinancialActions';
-import { ViewState, TourStep } from './types';
-import { ShieldCheck, Terminal, CloudAlert } from 'lucide-react';
+import { ViewState, TourStep, Subscription, BankAccount, DensityMode } from './types';
+import { ShieldCheck, Terminal, Receipt, Landmark, ArrowRightLeft, CreditCard, CloudAlert } from 'lucide-react';
+import { PRIMARY_CURRENCY } from './services/currencyService';
 
 const TOUR_STEPS: TourStep[] = [
   { targetId: 'nav-dashboard', title: 'Intelligence Core', content: 'Your financial nerve center. View atomic net worth, cash flow velocity, and asset distribution in real-time.', view: ViewState.DASHBOARD },
@@ -53,8 +55,11 @@ export const App: React.FC = () => {
 
   const handleResolveConflict = async (action: 'OVERWRITE' | 'MERGE') => {
       setConflict(null);
-      if (action === 'MERGE') await sync();
-      else await store.commitDelta();
+      if (action === 'MERGE') {
+          await sync();
+      } else {
+          await store.commitDelta();
+      }
   };
 
   const showChronometer = [ViewState.DASHBOARD, ViewState.INCOME, ViewState.ANALYTICS, ViewState.COCKPIT].includes(currentView);

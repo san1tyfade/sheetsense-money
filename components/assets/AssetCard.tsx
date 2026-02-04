@@ -41,6 +41,23 @@ export const AssetCard = memo(({ asset, exchangeRates, isLoading, onDelete, onEd
         }
     };
 
+    const identityBlock = (
+        <div className="space-y-1 min-w-0">
+            <h3 className={`font-black text-slate-900 dark:text-white truncate tracking-tight leading-tight uppercase ${
+                isCompact ? 'text-xs' : 'text-sm md:text-base'
+            }`}>
+                {asset.name}
+            </h3>
+            {showTypeLabel && (
+                <span className={`font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] block ${
+                    isCompact ? 'text-[7px]' : 'text-[8px] md:text-[9px]'
+                }`}>
+                    {asset.type}
+                </span>
+            )}
+        </div>
+    );
+
     return (
         <div 
             onClick={handleCardClick}
@@ -56,14 +73,17 @@ export const AssetCard = memo(({ asset, exchangeRates, isLoading, onDelete, onEd
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-blue-500/10 transition-colors pointer-events-none"></div>
             
             {/* Top Meta Row */}
-            <div className="flex justify-between items-start relative z-10 mb-4">
-                <div className={`bg-slate-100 dark:bg-slate-900 rounded-xl text-slate-600 dark:text-slate-400 shadow-inner group-hover:scale-110 transition-transform duration-500 ${
-                    isCompact ? 'p-2' : 'p-3'
-                }`}>
-                    {getAssetIcon(asset.type)}
+            <div className="flex justify-between items-start relative z-10 mb-4 gap-4">
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                    <div className={`bg-slate-100 dark:bg-slate-900 rounded-xl text-slate-600 dark:text-slate-400 shadow-inner group-hover:scale-110 transition-transform duration-500 shrink-0 ${
+                        isCompact ? 'p-2' : 'p-3'
+                    }`}>
+                        {getAssetIcon(asset.type)}
+                    </div>
+                    {!isManaged && identityBlock}
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                     {isManaged && (
                         <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full animate-in fade-in zoom-in-95 duration-500">
                             <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
@@ -88,22 +108,9 @@ export const AssetCard = memo(({ asset, exchangeRates, isLoading, onDelete, onEd
 
             {/* Main Information Layer (Split View) */}
             <div className="flex items-end justify-between relative z-10 gap-4">
-                {/* Left: Identity Gutter */}
+                {/* Left: Identity Gutter (Only for Managed) */}
                 <div className="flex-1 min-w-0">
-                    <div className="space-y-1">
-                        <h3 className={`font-black text-slate-900 dark:text-white truncate tracking-tight leading-tight uppercase ${
-                            isCompact ? 'text-xs' : 'text-sm md:text-base'
-                        }`}>
-                            {asset.name}
-                        </h3>
-                        {showTypeLabel && (
-                            <span className={`font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] block ${
-                                isCompact ? 'text-[7px]' : 'text-[8px] md:text-[9px]'
-                            }`}>
-                                {asset.type}
-                            </span>
-                        )}
-                    </div>
+                    {isManaged && identityBlock}
                 </div>
 
                 {/* Right: Valuation Gutter */}

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { performFullSignIn } from '../services/authService';
 import { getArchiveManagementList, deleteLocalYear, wipeLocalDatabase } from '../services/backupService';
@@ -12,8 +11,7 @@ import { RolloverStepper } from './settings/RolloverStepper';
 import { OnboardingSplash } from './settings/OnboardingSplash';
 import { WipeConfirmationModal } from './settings/WipeConfirmationModal';
 import { FontScale, DensityMode } from '../types';
-import { ShieldCheck, Zap, LogOut, Moon, Sun, Eye, EyeOff, Shield, ShieldAlert, Cpu, Terminal, Type, Settings2, Maximize, Minimize, User, Link, Database, Monitor } from 'lucide-react';
-import { PerspectiveToggle } from './core-ui/PerspectiveToggle';
+import { ShieldCheck, Zap, LogOut, Moon, Sun, Eye, EyeOff, Shield, ShieldAlert, Cpu, Terminal, Type, Settings2, Maximize, Minimize } from 'lucide-react';
 
 interface DataIngestProps {
   onTourStart: () => void;
@@ -94,11 +92,11 @@ export const DataIngest: React.FC<DataIngestProps> = ({ onTourStart }) => {
     );
   }
 
-  const subTabs: { id: SettingsSubTab; label: string; icon: any }[] = [
-    { id: 'IDENTITY', label: 'Identity', icon: User },
-    { id: 'CONNECTIVITY', label: 'Connectivity', icon: Link },
-    { id: 'PERSISTENCE', label: 'Persistence', icon: Database },
-    { id: 'SECURITY', label: 'Interface', icon: Monitor }
+  const subTabs: { id: SettingsSubTab; label: string }[] = [
+    { id: 'IDENTITY', label: 'Identity' },
+    { id: 'CONNECTIVITY', label: 'Connectivity' },
+    { id: 'PERSISTENCE', label: 'Persistence' },
+    { id: 'SECURITY', label: 'Interface' }
   ];
 
   return (
@@ -113,17 +111,25 @@ export const DataIngest: React.FC<DataIngestProps> = ({ onTourStart }) => {
                 <div className="flex items-center gap-5">
                     <div className="w-20 h-20 sm:w-24 sm:h-24 bg-slate-950 dark:bg-slate-950 rounded-[2rem] border border-blue-500/20 shadow-2xl flex flex-col items-center justify-center relative overflow-hidden shrink-0 group">
                         <div className="absolute inset-0 bg-blue-500/5 animate-pulse group-hover:bg-blue-500/10 transition-colors"></div>
-                        <span className="text-xl sm:text-2xl font-black text-white tracking-tighter relative z-10">2.7</span>
+                        <span className="text-xl sm:text-2xl font-black text-white tracking-tighter relative z-10">2.8</span>
                         <span className="text-[8px] sm:text-[9px] font-black text-blue-500 uppercase tracking-[0.3em] relative z-10 mt-1">Revision</span>
                     </div>
                 </div>
             </div>
 
-            <PerspectiveToggle 
-              options={subTabs}
-              value={activeSubTab}
-              onChange={setActiveSubTab}
-            />
+            <nav className="flex items-center gap-3 text-sm sm:text-base font-black tracking-tight overflow-x-auto no-scrollbar flex-nowrap pb-2 sm:pb-0">
+                {subTabs.map((t, idx) => (
+                  <React.Fragment key={t.id}>
+                    <button 
+                      onClick={() => setActiveSubTab(t.id)}
+                      className={`transition-all duration-300 hover:text-slate-900 dark:hover:text-white shrink-0 ${activeSubTab === t.id ? 'text-slate-900 dark:text-white scale-105 underline decoration-blue-500 decoration-2 underline-offset-8' : 'text-slate-400'}`}
+                    >
+                      {t.label}
+                    </button>
+                    {idx < subTabs.length - 1 && <span className="text-slate-200 dark:text-slate-700 font-light text-lg shrink-0">/</span>}
+                  </React.Fragment>
+                ))}
+            </nav>
         </div>
       </header>
 
@@ -301,7 +307,7 @@ export const DataIngest: React.FC<DataIngestProps> = ({ onTourStart }) => {
 
       <footer className="pt-20 pb-12 flex flex-col items-center gap-6 opacity-40">
           <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.5em] text-slate-400">
-             <Terminal size={14} className="text-blue-500" /> Instance Build v2.7.0 Stable
+             <Terminal size={14} className="text-blue-500" /> Instance Build v2.8.0 Stable
           </div>
       </footer>
     </div>

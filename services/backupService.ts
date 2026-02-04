@@ -77,7 +77,7 @@ const getVaultPayload = async (sheetId: string, userSub?: string, userEmail?: st
     integrity: {
       signature,
       algorithm: "AES-GCM-256",
-      version: "2.7.0",
+      version: "2.8.0",
       origin_hint: userEmail || 'local-vault',
       sheet_id: cleanId,
       timestamp: new Date().toISOString(),
@@ -140,9 +140,7 @@ export const validateVault = async (jsonString: string, currentSheetId: string, 
             return { status: 'identity_mismatch', envelope };
         }
     } catch (e) {
-        // Robust message extraction to ensure "EVP Protocol Error" is caught by tests
-        const msg = (e && typeof e === 'object' && 'message' in e) ? (e as Error).message : "PARSE_ERROR: Could not read backup file.";
-        throw new AppError(IEP.DMN.EVP_DECRYPT_FAIL, msg, 'RECOVERABLE', e);
+        throw new AppError(IEP.DMN.EVP_DECRYPT_FAIL, e instanceof Error ? e.message : "PARSE_ERROR: Could not read backup file.", 'RECOVERABLE', e);
     }
 };
 

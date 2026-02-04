@@ -1,23 +1,21 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { formatBaseCurrency, formatNativeCurrency } from '../../services/currencyService';
-import { useFinancialStore } from '../../context/FinancialContext';
+import { useSettings } from '../../context/SystemContext';
 
 interface PrivacyValueProps {
-  value: number | string;
+  value: number | string | undefined | null;
   format?: 'currency' | 'percent' | 'native' | 'number';
   currency?: string;
   className?: string;
   precision?: number;
-  // Added style property to allow parent components to pass inline styles (e.g. dynamic colors in charts)
   style?: React.CSSProperties;
 }
 
 /**
- * RegistryValue: Atomic Rendering Protocol
- * Centralized logic for financial values with built-in Ghost Mode compliance.
- * Uses asterisk masking for privacy instead of CSS blur for improved legibility.
+ * PrivacyValue
+ * Standardized rendering with Ghost Mode protection.
  */
-export const PrivacyValue: React.FC<PrivacyValueProps> = ({ 
+export const PrivacyValue: React.FC<PrivacyValueProps> = memo(({ 
   value, 
   format = 'currency', 
   currency, 
@@ -25,34 +23,35 @@ export const PrivacyValue: React.FC<PrivacyValueProps> = ({
   precision = 0,
   style
 }) => {
-  const { isGhostMode } = useFinancialStore();
+  const { isGhostMode } = useSettings();
 
-  const formattedValue = React.useMemo(() => {
+  const formattedValue = useMemo(() => {
+    if (value === undefined || value === null) return '—';
     if (typeof value === 'string') return value;
-    // TypeScript narrowing ensures 'value' is a number here
-    if (isNaN(value)) return '0.00';
+    
+    const num = typeof value === 'number' ? value : parseFloat(String(value));
+    if (isNaN(num)) return '0.00';
     
     switch (format) {
       case 'currency':
-        return formatBaseCurrency(value).replace(/\.00$/, '');
+        return formatBaseCurrency(num).replace(/\.00$/, '');
       case 'native':
-        return formatNativeCurrency(value, currency || 'CAD').replace(/\.00$/, '');
+        return formatNativeCurrency(num, currency || 'CAD').replace(/\.00$/, '');
       case 'percent':
-        return `${value.toFixed(precision)}%`;
+        return `${num.toFixed(precision)}%`;
       case 'number':
-        return value.toLocaleString(undefined, { 
+        return num.toLocaleString(undefined, { 
             minimumFractionDigits: precision, 
             maximumFractionDigits: precision 
         });
       default:
-        return String(value);
+        return String(num);
     }
   }, [value, format, currency, precision]);
 
   return (
-    // Applied style prop to allow components like SpendTreemap to control text presentation
     <span className={`tabular-nums ${className}`} style={style}>
       {isGhostMode ? '*****' : formattedValue}
     </span>
   );
-};
+});

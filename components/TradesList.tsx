@@ -1,6 +1,6 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { Trade, TimeFocus } from '../types';
-import { History, Plus, Filter, ArrowRightLeft, Check, Calendar, Zap, Clock, Landmark } from 'lucide-react';
+import { Plus, Filter, Clock, Landmark, Zap } from 'lucide-react';
 import { filterAndProcessTrades, TradeGroup } from '../services/trades/tradeService';
 import { TradeAssetAccordion } from './trades/TradeAssetAccordion';
 import { TradeEntryModal } from './trades/TradeEntryModal';
@@ -8,6 +8,7 @@ import { useFinancialStore } from '../context/FinancialContext';
 import { useFinancialActions } from '../hooks/useFinancialActions';
 import { useSearchProtocol } from '../hooks/useSearchProtocol';
 import { useSelection } from '../hooks/useSelection';
+import { useFinancialData } from '../hooks/useFinancialData';
 import { InstitutionalRegistryTable, ColumnDefinition } from './core-ui/InstitutionalRegistryTable';
 import { SelectionActionMatrix } from './core-ui/SelectionActionMatrix';
 import { ManagedViewHeader } from './core-ui/ManagedViewHeader';
@@ -18,6 +19,9 @@ export const TradesList: React.FC = () => {
   const store = useFinancialStore();
   const crud = useFinancialActions();
   const { trades, isSyncing: isLoading, isReadOnly, accounts } = store;
+
+  // Phase 3: SWR Trigger
+  useFinancialData(['trades']);
 
   const [viewMode, setViewMode] = useState<'BY_ASSET' | 'RECENT_HISTORY'>('BY_ASSET');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -122,7 +126,7 @@ export const TradesList: React.FC = () => {
                  <div className="space-y-6">
                     <div className="grid grid-cols-1 gap-1.5">
                       {['ALL', 'BUY', 'SELL'].map(t => (
-                        <button key={t} onClick={() => setTypeFilter(t as any)} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest ${typeFilter === t ? 'bg-blue-500 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-500'}`}>{t}</button>
+                        <button key={t} onClick={() => { setTypeFilter(t as any); setIsFilterMenuOpen(false); }} className={`px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest ${typeFilter === t ? 'bg-blue-500 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-500'}`}>{t}</button>
                       ))}
                     </div>
                  </div>

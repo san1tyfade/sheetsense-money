@@ -66,7 +66,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isInline = false }
             </div>
             <div>
                 <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight">Privacy Protocol</h2>
-                <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">Sheetsense Production Build v2.7.0 — Security Standards</p>
+                <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">Sheetsense Production Build v2.8.0 — Security Standards</p>
             </div>
         </div>
       </header>
@@ -102,7 +102,7 @@ export const PrivacyPolicy: React.FC<PrivacyPolicyProps> = ({ isInline = false }
                     Audit Date: {new Date().toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })}
                 </div>
                 <div className="px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Verified Production Stable
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Verified Production Stable v2.8.0
                 </div>
             </div>
         </div>

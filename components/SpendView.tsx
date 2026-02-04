@@ -1,10 +1,9 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { StatementProcessor } from './tools/StatementProcessor';
 import { JournalView } from './JournalView';
 import { useFinancialStore } from '../context/FinancialContext';
 import { ViewHeader } from './core-ui/ViewHeader';
-import { Terminal, LayoutGrid, Zap, History, Info, Activity, Calendar, Store, Database, Loader2, Radio, TrendingUp, TrendingDown, ShieldCheck, ShieldAlert, CheckCircle2, RotateCcw, Search, BarChart2, BookOpen } from 'lucide-react';
+import { Terminal, LayoutGrid, Zap, History, Info, Activity, Calendar, Store, Database, Loader2, Radio, TrendingUp, TrendingDown, ShieldCheck, ShieldAlert, CheckCircle2, RotateCcw } from 'lucide-react';
 import { buildSpendingHierarchy, LeafType, HierarchyNode } from '../services/analytics/hierarchyService';
 import { SpendTreemap } from './spend/SpendTreemap';
 import { DrillBreadcrumbs } from './analytics/AnalyticsPrimitives';
@@ -14,7 +13,6 @@ import { TimeFocusSelector } from './TimeFocusSelector';
 import { haptics } from '../services/infrastructure/HapticService';
 import { PrivacyValue } from './core-ui/PrivacyValue';
 import { formatBaseCurrency } from '../services/currencyService';
-import { PerspectiveToggle } from './core-ui/PerspectiveToggle';
 
 type SpendMode = 'AUDIT' | 'INSIGHTS' | 'JOURNAL';
 
@@ -92,12 +90,6 @@ export const SpendView: React.FC = () => {
       }
   };
 
-  const modes: { id: SpendMode; label: string; icon: any }[] = [
-    { id: 'INSIGHTS', label: 'Insights', icon: BarChart2 },
-    { id: 'AUDIT', label: 'Audit', icon: Search },
-    { id: 'JOURNAL', label: 'Journal', icon: BookOpen }
-  ];
-
   return (
     <div className="h-full flex flex-col space-y-6 animate-fade-in pb-24">
        <header className="pt-2 pb-2">
@@ -111,11 +103,28 @@ export const SpendView: React.FC = () => {
            </div>
 
            <div className="flex items-center gap-6">
-              <PerspectiveToggle 
-                options={modes}
-                value={mode}
-                onChange={setMode}
-              />
+              <div className="flex items-center gap-4 px-2 text-xl font-black tracking-tighter self-center md:self-auto uppercase">
+                <button 
+                  onClick={() => { haptics.click('soft'); setMode('INSIGHTS'); }}
+                  className={`transition-all duration-300 hover:text-slate-900 dark:hover:text-white ${mode === 'INSIGHTS' ? 'text-slate-900 dark:text-white scale-105 underline decoration-blue-500 decoration-4 underline-offset-8' : 'text-slate-400'}`}
+                >
+                  Insights
+                </button>
+                <span className="text-slate-200 dark:text-slate-700 font-light text-2xl">/</span>
+                <button 
+                  onClick={() => { haptics.click('soft'); setMode('AUDIT'); }}
+                  className={`transition-all duration-300 hover:text-slate-900 dark:hover:text-white ${mode === 'AUDIT' ? 'text-slate-900 dark:text-white scale-105 underline decoration-blue-500 decoration-4 underline-offset-8' : 'text-slate-400'}`}
+                >
+                  Audit
+                </button>
+                <span className="text-slate-200 dark:text-slate-700 font-light text-2xl">/</span>
+                <button 
+                  onClick={() => { haptics.click('soft'); setMode('JOURNAL'); }}
+                  className={`transition-all duration-300 hover:text-slate-900 dark:hover:text-white ${mode === 'JOURNAL' ? 'text-slate-900 dark:text-white scale-105 underline decoration-blue-500 decoration-4 underline-offset-8' : 'text-slate-400'}`}
+                >
+                  Journal
+                </button>
+              </div>
 
               {(isSyncing || isFetchingPrices) && (
                 <div className="hidden xl:flex items-center gap-4">
@@ -259,7 +268,7 @@ export const SpendView: React.FC = () => {
                         </div>
 
                         <div className="lg:col-span-4 space-y-6">
-                            {/* Logic Cluster Inspect Box */}
+                            {/* Logic Cluster Inspect Box (NOW FIRST) */}
                             <div className="bg-slate-950 p-10 rounded-[3rem] border-2 border-slate-900 text-center relative overflow-hidden hidden lg:flex flex-col justify-center min-h-[350px]">
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl"></div>
                                 
@@ -323,7 +332,7 @@ export const SpendView: React.FC = () => {
                                 )}
                             </div>
 
-                            {/* Reconciliation Status Box */}
+                            {/* Reconciliation Status Box (NOW SECOND) */}
                             <div className={`p-10 rounded-[3rem] border-2 transition-all duration-700 flex flex-col justify-between backdrop-blur-xl relative overflow-hidden group ${isFullyReconciled ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-amber-500/5 border-amber-500/20'}`}>
                                 <div className="absolute top-0 right-0 w-32 h-32 bg-current opacity-[0.03] rounded-full blur-3xl -mr-16 -mt-16 group-hover:opacity-[0.08] transition-opacity"></div>
                                 <div className="relative z-10 space-y-8">
@@ -372,7 +381,7 @@ export const SpendView: React.FC = () => {
 
                     <footer className="flex justify-center opacity-30 pt-12 pb-8">
                          <span className="text-[10px] font-black uppercase text-slate-400 tracking-[0.5em] flex items-center gap-4">
-                             <Terminal size={14} /> Behavioral Insights v1.2.5 Final
+                             <Terminal size={14} /> Behavioral Insights v2.8.0 Stable
                          </span>
                     </footer>
                 </div>
