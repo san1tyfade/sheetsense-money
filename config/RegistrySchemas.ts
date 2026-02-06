@@ -13,7 +13,6 @@ export interface FieldDefinition {
 export interface SchemaDefinition {
     id: string;
     fields: Record<string, FieldDefinition>;
-    columns: { key: string; header: string; type?: FieldType }[];
     postProcess?: (item: any) => any;
 }
 
@@ -27,13 +26,6 @@ export const REGISTRY_SCHEMAS: Record<string, SchemaDefinition> = {
             currency: { keys: ['currency', 'curr', 'ccy'], type: 'string', fallback: 'CAD' },
             lastUpdated: { keys: ['date updated', 'last updated', 'date', 'updated', 'as of'], type: 'date' }
         },
-        columns: [
-            { key: 'name', header: 'Asset Name' },
-            { key: 'type', header: 'Category' },
-            { key: 'value', header: 'Value', type: 'number' },
-            { key: 'currency', header: 'Currency' },
-            { key: 'lastUpdated', header: 'Last Updated', type: 'date' }
-        ],
         postProcess: (item: Asset) => {
             item.type = resolveAssetType(item.name, item.type);
             return item;
@@ -53,18 +45,6 @@ export const REGISTRY_SCHEMAS: Record<string, SchemaDefinition> = {
             marketValue: { keys: ['market value', 'value', 'total value', 'market val'], type: 'number', fallback: 0 },
             nativeCurrency: { keys: ['currency', 'curr', 'ccy'], type: 'string' }
         },
-        columns: [
-            { key: 'ticker', header: 'Ticker', type: 'ticker' },
-            { key: 'name', header: 'Description' },
-            { key: 'quantity', header: 'Qty', type: 'number' },
-            { key: 'avgPrice', header: 'Avg Price', type: 'number' },
-            { key: 'currentPrice', header: 'Market Price', type: 'number' },
-            { key: 'marketValue', header: 'Market Value', type: 'number' },
-            { key: 'bookValue', header: 'Book Cost', type: 'number' },
-            { key: 'accountName', header: 'Account' },
-            { key: 'assetClass', header: 'Class' },
-            { key: 'nativeCurrency', header: 'Curr' }
-        ],
         postProcess: (item: Investment) => {
             if (!item.ticker && item.name) item.ticker = item.name.toUpperCase();
             if ((!item.avgPrice || item.avgPrice === 0) && item.bookValue && item.quantity > 0) item.avgPrice = item.bookValue / item.quantity;
@@ -84,16 +64,6 @@ export const REGISTRY_SCHEMAS: Record<string, SchemaDefinition> = {
             fee: { keys: ['fee', 'commission', 'transaction fee'], type: 'number', fallback: 0 },
             account: { keys: ['account', 'portfolio', 'held in', 'source'], type: 'string', fallback: 'Crypto Core' }
         },
-        columns: [
-            { key: 'date', header: 'Date', type: 'date' },
-            { key: 'ticker', header: 'Ticker', type: 'ticker' },
-            { key: 'type', header: 'Action' },
-            { key: 'quantity', header: 'Qty', type: 'number' },
-            { key: 'price', header: 'Price', type: 'number' },
-            { key: 'total', header: 'Total Value', type: 'number' },
-            { key: 'fee', header: 'Fee', type: 'number' },
-            { key: 'account', header: 'Account' }
-        ],
         postProcess: (item: Trade) => {
             const raw = String(item.type).toUpperCase();
             if (!raw.includes('BUY') && !raw.includes('SELL')) item.type = item.quantity < 0 ? 'SELL' : 'BUY';
@@ -110,15 +80,7 @@ export const REGISTRY_SCHEMAS: Record<string, SchemaDefinition> = {
             category: { keys: ['category', 'type', 'kind'], type: 'string', fallback: 'General' },
             active: { keys: ['active', 'status'], type: 'boolean', fallback: true },
             paymentMethod: { keys: ['payment method', 'account', 'card', 'source'], type: 'string' }
-        },
-        columns: [
-            { key: 'name', header: 'Service' },
-            { key: 'cost', header: 'Cost', type: 'number' },
-            { key: 'period', header: 'Period' },
-            { key: 'category', header: 'Category' },
-            { key: 'paymentMethod', header: 'Payment Method' },
-            { key: 'active', header: 'Active', type: 'boolean' }
-        ]
+        }
     },
     accounts: {
         id: 'accounts',
@@ -131,16 +93,7 @@ export const REGISTRY_SCHEMAS: Record<string, SchemaDefinition> = {
             transactionType: { keys: ['transaction type', 'class', 'entry type'], type: 'string' },
             currency: { keys: ['currency', 'curr', 'ccy'], type: 'string', fallback: 'CAD' },
             purpose: { keys: ['purpose', 'description', 'usage', 'merchant'], type: 'string', fallback: 'General' }
-        },
-        columns: [
-            { key: 'institution', header: 'Institution' },
-            { key: 'name', header: 'Account Name' },
-            { key: 'type', header: 'Account Type' },
-            { key: 'accountNumber', header: 'Number / Last 4' },
-            { key: 'currency', header: 'Currency' },
-            { key: 'paymentType', header: 'Payment Type' },
-            { key: 'purpose', header: 'Purpose' }
-        ]
+        }
     },
     journal: {
         id: 'journal',
@@ -153,38 +106,20 @@ export const REGISTRY_SCHEMAS: Record<string, SchemaDefinition> = {
             amount: { keys: ['amount', 'value', 'cost', 'total'], type: 'number', required: true },
             source: { keys: ['source', 'account', 'bank', 'card'], type: 'string' },
             transactionId: { keys: ['transaction id', 'id', 'txid', 'reference'], type: 'string' }
-        },
-        columns: [
-            { key: 'date', header: 'Date', type: 'date' },
-            { key: 'description', header: 'Description' },
-            { key: 'amount', header: 'Amount', type: 'number' },
-            { key: 'category', header: 'Category' },
-            { key: 'subCategory', header: 'Sub-Category' },
-            { key: 'source', header: 'Source' },
-            { key: 'transactionId', header: 'Transaction ID' },
-            { key: 'canonicalName', header: 'Canonical Name' }
-        ]
+        }
     },
     logData: {
         id: 'logData',
         fields: {
             date: { keys: ['date', 'time', 'timestamp', 'week ending'], type: 'date', required: true },
             value: { keys: ['net worth', 'total', 'value', 'amount', 'balance', 'equity'], type: 'number', required: true }
-        },
-        columns: [
-            { key: 'date', header: 'Date', type: 'date' },
-            { key: 'value', header: 'Net Worth', type: 'number' }
-        ]
+        }
     },
     portfolioLog: {
         id: 'portfolioLog',
         fields: {
             date: { keys: ['date', 'time', 'timestamp', 'week ending'], type: 'date', required: true },
             value_marker: { keys: ['value', 'balance', 'amount'], type: 'string' }
-        },
-        columns: [
-            { key: 'date', header: 'Date', type: 'date' },
-            { key: 'value_marker', header: 'Total Value' }
-        ]
+        }
     }
 };

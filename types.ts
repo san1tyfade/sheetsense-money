@@ -4,27 +4,8 @@
 export interface ManagedEntity {
   id: string;
   rowIndex?: number;
-  isManaged?: boolean;
-  lastUplinkHash?: string;
-  // Added isDirty property to track local changes before they are committed to the spreadsheet
   isDirty?: boolean;
-}
-
-export type MutationAction = 'UPSERT' | 'DELETE';
-
-export interface Mutation {
-  id: string;
-  entity: keyof SheetConfig['tabNames'];
-  action: MutationAction;
-  data: any;
-  timestamp: number;
-}
-
-export interface SyncMetadata {
-  tab: string;
-  lastSyncHash: string;
-  lastSyncTimestamp: string;
-  versionId?: string;
+  isManaged?: boolean;
 }
 
 export interface Asset extends ManagedEntity {

@@ -17,7 +17,9 @@ interface State {
  * A high-level Error Boundary that catches uncaught runtime exceptions 
  * and provides a diagnostic payload for recovery.
  */
+// Fix: Explicitly extending React.Component to ensure inherited members like setState and props are recognized by the TypeScript compiler
 export class GlobalIntegrityGuard extends React.Component<Props, State> {
+  // Using standard state initialization for class components
   public state: State = {
     hasError: false,
     error: null,
@@ -34,6 +36,8 @@ export class GlobalIntegrityGuard extends React.Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("[SYS-CRITICAL] Uncaught exception captured by Integrity Guard:", error, errorInfo);
+    // Fix: setState is a core member inherited from React.Component. 
+    // Using React.Component explicitly ensures this is correctly typed.
     this.setState({ error, errorInfo });
   }
 
@@ -52,8 +56,8 @@ export class GlobalIntegrityGuard extends React.Component<Props, State> {
     };
     
     navigator.clipboard.writeText(JSON.stringify(payload, null, 2))
-      .then(() => alert("Diagnostic payload copied to clipboard."))
-      .catch(() => alert("Failed to copy payload."));
+      .then(() => alert("Diagnostic payload copied to clipboard. Provide this to the code assistant."))
+      .catch(() => alert("Failed to copy payload. See console for details."));
   };
 
   public render() {
@@ -61,6 +65,7 @@ export class GlobalIntegrityGuard extends React.Component<Props, State> {
       return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 sm:p-12 font-sans selection:bg-rose-500/30">
           <div className="max-w-2xl w-full bg-slate-900 border border-slate-800 rounded-[3.5rem] p-10 md:p-16 shadow-2xl relative overflow-hidden group">
+            {/* Visual Background Elements */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-rose-500/5 rounded-full blur-[120px] -mr-48 -mt-48 transition-colors duration-1000 group-hover:bg-rose-500/10"></div>
             
             <div className="relative z-10 space-y-10">
@@ -75,7 +80,7 @@ export class GlobalIntegrityGuard extends React.Component<Props, State> {
                             <span className="text-rose-500">Protocol Initiated</span>
                         </h2>
                         <p className="text-sm md:text-base text-slate-400 font-bold leading-relaxed max-w-md mx-auto uppercase tracking-wide opacity-80">
-                            A critical logic fault has bypassed primary security layers. 
+                            A critical hardware mismatch or logic fault has bypassed primary security layers. 
                         </p>
                     </div>
                 </div>
@@ -100,18 +105,37 @@ export class GlobalIntegrityGuard extends React.Component<Props, State> {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button onClick={this.copyPayload} className="flex items-center justify-center gap-3 py-5 px-8 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all active:scale-[0.98] shadow-xl">
-                        <Clipboard size={18} /> Copy Payload
+                    <button 
+                        onClick={this.copyPayload}
+                        className="flex items-center justify-center gap-3 py-5 px-8 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all active:scale-[0.98] shadow-xl"
+                    >
+                        <Clipboard size={18} />
+                        Copy Payload
                     </button>
-                    <button onClick={this.handleReset} className="flex items-center justify-center gap-3 py-5 px-8 bg-white text-slate-950 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all hover:bg-rose-50 active:scale-[0.98] shadow-2xl shadow-rose-500/20">
-                        <RefreshCw size={18} strokeWidth={3} /> Re-initialize
+                    <button 
+                        onClick={this.handleReset}
+                        className="flex items-center justify-center gap-3 py-5 px-8 bg-white text-slate-950 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] transition-all hover:bg-rose-50 active:scale-[0.98] shadow-2xl shadow-rose-500/20"
+                    >
+                        <RefreshCw size={18} strokeWidth={3} />
+                        Re-initialize
                     </button>
+                </div>
+
+                <div className="flex flex-col items-center gap-4 pt-4 border-t border-slate-800/50 opacity-40">
+                    <div className="flex items-center gap-4">
+                        <div className="w-8 h-[1px] bg-slate-700" />
+                        <Cpu size={14} className="text-slate-500" />
+                        <div className="w-8 h-[1px] bg-slate-700" />
+                    </div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.5em] text-slate-600">Sovereign_Integrity_Vault_v2.8</p>
                 </div>
             </div>
           </div>
         </div>
       );
     }
+
+    // Fix: props is correctly inherited from React.Component and accessible via this.props
     return this.props.children;
   }
 }

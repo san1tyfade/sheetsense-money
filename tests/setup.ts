@@ -7,11 +7,14 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-import { webcrypto } from 'node:crypto';
-
-// Global shim for Crypto using Node's native WebCrypto
+// Global shim for Crypto
 Object.defineProperty(globalThis, 'crypto', {
-  value: webcrypto
+  value: {
+    randomUUID: () => 'test-uuid-' + Math.random(),
+    subtle: {
+      digest: async () => new Uint8Array(32).buffer
+    }
+  },
 });
 
 // Mock for Window.location

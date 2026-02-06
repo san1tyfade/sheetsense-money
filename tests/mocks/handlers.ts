@@ -25,7 +25,7 @@ export const handlers = [
   // Intercept Google Sheets Data Fetch
   http.get('https://sheets.googleapis.com/v4/spreadsheets/:sheetId/values/:range', ({ params }) => {
     const range = decodeURIComponent(params.range as string);
-
+    
     // Return different CSVs based on the requested tab
     if (range.includes('Assets')) {
       return HttpResponse.json({ values: MOCK_ASSETS_CSV.split('\n').map(line => line.split(',')) });
@@ -42,15 +42,6 @@ export const handlers = [
         { properties: { title: 'Income' } },
         { properties: { title: 'Trades' } }
       ]
-    });
-  }),
-
-  // Intercept Google Drive File Metadata
-  http.get('https://www.googleapis.com/drive/v3/files/:fileId', () => {
-    return HttpResponse.json({
-      id: 'test-sheet-id',
-      modifiedTime: '2024-01-01T00:00:00.000Z',
-      name: 'Sheetsense'
     });
   })
 ];

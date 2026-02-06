@@ -1,13 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { Asset } from '../types';
-import { Plus } from 'lucide-react';
+import { Plus, Zap, Cpu } from 'lucide-react';
 import { AssetCard } from './assets/AssetCard';
 import { AssetEntryModal } from './assets/AssetEntryModal';
 import { useFinancialStore } from '../context/FinancialContext';
 import { useFinancialActions } from '../hooks/useFinancialActions';
 import { useSelection } from '../hooks/useSelection';
 import { useViewControls } from '../hooks/useViewControls';
-import { useFinancialData } from '../hooks/useFinancialData';
 import { InstitutionalRegistryTable, ColumnDefinition } from './core-ui/InstitutionalRegistryTable';
 import { SelectionActionMatrix } from './core-ui/SelectionActionMatrix';
 import { ManagedViewHeader } from './core-ui/ManagedViewHeader';
@@ -18,9 +17,6 @@ import { PrivacyValue } from './core-ui/PrivacyValue';
 export const AssetsList: React.FC = () => {
   const { assets, isSyncing, rates, isReadOnly } = useFinancialStore();
   const crud = useFinancialActions();
-  
-  // Phase 3: SWR Trigger
-  useFinancialData(['assets']);
 
   const controls = useViewControls<Asset>(
     assets,
@@ -64,6 +60,7 @@ export const AssetsList: React.FC = () => {
 
       <div className={`transition-all duration-700 ${isSyncing ? 'opacity-40 grayscale blur-[2px]' : ''}`}>
         {controls.view.isTable ? (
+          // Fix: Wrapped setEditingAsset in callback to satisfy InstitutionalRegistryTable onEdit requirement
           <InstitutionalRegistryTable data={controls.data} columns={columns} selection={selection} onEdit={(item: Asset) => setEditingAsset(item)} onDelete={crud.assets.delete} isReadOnly={isReadOnly} isLoading={isSyncing} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">

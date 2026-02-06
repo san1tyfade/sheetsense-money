@@ -3,7 +3,6 @@ import {
     parseNumber, parseFlexibleDate, resolveColumnIndex, 
     generateId, normalizeTicker, detectTickerCurrency 
 } from './parserUtils';
-import { getSyncWorker } from '../sync/SyncWorker';
 
 /**
  * UniversalParser: The Ingestion Sovereign
@@ -12,22 +11,10 @@ import { getSyncWorker } from '../sync/SyncWorker';
 export class UniversalParser {
     /**
      * Entry point for standard registry parsing.
-     * Large sets are cloned to the worker to prevent UI lag.
      */
     static parse<T>(rows: string[][], headerIndex: number, schema: SchemaDefinition): T[] {
         if (rows.length <= headerIndex) return [];
         
-        // Threshold for worker offloading
-        if (rows.length > 500) {
-            const worker = getSyncWorker();
-            // Fire and forget; background sync will hydrate the state eventually
-            // We still parse locally for immediate display, but worker would handle 'Deep Sync'
-            worker.postMessage({ 
-                action: 'PARSE_DATA', 
-                payload: { rawData: rows.map(r => r.join(',')).join('\n'), dataType: schema.id, schema } 
-            });
-        }
-
         const headers = rows[headerIndex];
         const indices = this.resolveIndices(headers, schema);
         const results: T[] = [];
@@ -38,7 +25,8 @@ export class UniversalParser {
 
             const item = this.mapRowToSchema(values, indices, schema);
             if (item) {
-                (item as any).id = (item as any).id || generateId();
+                // Attach technical metadata for CRUD operations
+                (item as any).id = generateId();
                 (item as any).rowIndex = i;
                 
                 const finalItem = schema.postProcess ? schema.postProcess(item) : item;
@@ -67,14 +55,21 @@ export class UniversalParser {
             
             const processedValue = this.convertValue(rawValue, def.type, def.fallback);
             
+            // STRICT VALIDATION FIX: 
+            // 0 is a valid financial value and should NOT mark a row as invalid.
+            // Only null, undefined, or empty strings in non-numeric required fields should fail.
             if (def.required) {
                 const isEmpty = processedValue === undefined || processedValue === null || processedValue === '';
-                if (isEmpty) hasRequiredData = false;
+                if (isEmpty) {
+                    hasRequiredData = false;
+                }
             }
             
             obj[prop] = processedValue;
         });
 
+        // Special dynamic logic for currency detection if not explicitly mapped
+        // FIX: Only detect if nativeCurrency is currently null/undefined (respect the sheet)
         if (schema.id === 'investments' && obj.ticker && !obj.nativeCurrency) {
             obj.nativeCurrency = detectTickerCurrency(obj.ticker, obj.accountName);
         }

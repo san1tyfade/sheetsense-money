@@ -33,7 +33,7 @@ const detectCadence = (dates: string[]): CadenceType => {
     const sortedDates = [...dates].sort().map(d => new Date(d).getTime());
     const gaps: number[] = [];
     for (let i = 1; i < sortedDates.length; i++) {
-        gaps.push((sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24));
+        gaps.push((sortedDates[i] - sortedDates[i-1]) / (1000 * 60 * 60 * 24));
     }
     const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
     if (avgGap >= 25 && avgGap <= 35) return 'MONTHLY';
@@ -56,7 +56,7 @@ export const aggregateMerchantProfiles = (
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     const l12mLimit = new Date(currentYear, currentMonth - 12, 1).toISOString().split('T')[0];
-
+    
     const registeredIdentities = new Set(registry.map(s => cleanMerchantDescription(s.name)));
 
     // 1. Initialize
@@ -99,9 +99,7 @@ export const aggregateMerchantProfiles = (
             if (!merchantHistoryDates[identity]) merchantHistoryDates[identity] = [];
             merchantHistoryDates[identity].push(hx.date);
 
-            // Parse YYYY-MM-DD as local time explicitly to avoid UTC shift
-            const [y, m, day] = hx.date.split('-').map(Number);
-            const d = new Date(y, m - 1, day);
+            const d = new Date(hx.date);
             const monthsAgo = (currentYear - d.getFullYear()) * 12 + (currentMonth - d.getMonth());
             if (monthsAgo >= 0 && monthsAgo < 12) profiles[identity].pulse[monthsAgo] = true;
         }
@@ -117,7 +115,7 @@ export const aggregateMerchantProfiles = (
             avgCountPerMonth: (profiles[id].l12mCount / 12)
         };
         profiles[id].cadence = detectCadence(merchantHistoryDates[id] || []);
-
+        
         const frequencyCount = profiles[id].pulse.filter(Boolean).length;
         if (profiles[id].cadence === 'NONE' && frequencyCount >= 8) profiles[id].cadence = 'MONTHLY';
     });
@@ -130,10 +128,10 @@ export const aggregateMerchantProfiles = (
  */
 export const getTransactionAnomaly = (tx: Transaction, profile?: MerchantProfile) => {
     if (!profile || profile.stats.median === 0) return null;
-
+    
     const amount = Math.abs(tx.amount);
     const variance = ((amount - profile.stats.median) / profile.stats.median) * 100;
-
+    
     // Thresholds: >20% delta AND >1.5 stdDev (or >$10 for small values)
     if (Math.abs(variance) > 20 && Math.abs(amount - profile.stats.median) > Math.max(10, profile.stats.stdDev * 1.5)) {
         return {

@@ -1,4 +1,3 @@
-import { getAppDB, DB_CONFIG } from './infrastructure/DatabaseProvider';
 
 // Mapping of common tickers to CoinGecko API IDs
 const COINGECKO_MAP: Record<string, string> = {
@@ -61,6 +60,19 @@ interface CacheEntry {
 // In-memory cache for live prices
 const PRICE_CACHE: Record<string, CacheEntry> = {};
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * INDEXED DB FOR PERSISTENT HISTORICAL BENCHMARKS
+ */
+const DB_NAME = 'FinTrackDB';
+
+const openPriceDB = (): Promise<IDBDatabase> => {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+};
 
 /**
  * Fetches live prices for a list of tickers.
@@ -150,13 +162,13 @@ export const fetchLivePrices = async (tickers: string[]): Promise<Record<string,
  * Fetches historical price series for a ticker with aggressive IndexedDB caching.
  */
 export const fetchHistoricalPrices = async (ticker: string, startDate: string): Promise<{date: string, price: number}[]> => {
-    const db = await getAppDB();
+    const db = await openPriceDB();
     const cacheKey = `hist_${ticker}`;
     
     // 1. Check persistent cache
     const cachedData = await new Promise<any[]>((resolve) => {
-        const tx = db.transaction(DB_CONFIG.APP.STORE, 'readonly');
-        const store = tx.objectStore(DB_CONFIG.APP.STORE);
+        const tx = db.transaction('app_state', 'readonly');
+        const store = tx.objectStore('app_state');
         const req = store.get(cacheKey);
         req.onsuccess = () => resolve(req.result || []);
         req.onerror = () => resolve([]);
@@ -200,8 +212,8 @@ export const fetchHistoricalPrices = async (ticker: string, startDate: string): 
         }).filter((p: any) => p.price > 0);
 
         // 4. Persist to cache
-        const tx = db.transaction(DB_CONFIG.APP.STORE, 'readwrite');
-        const store = tx.objectStore(DB_CONFIG.APP.STORE);
+        const tx = db.transaction('app_state', 'readwrite');
+        const store = tx.objectStore('app_state');
         store.put(newSeries, cacheKey);
 
         return newSeries;

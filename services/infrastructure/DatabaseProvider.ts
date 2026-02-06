@@ -8,17 +8,13 @@ import { AppError, IEP } from './ErrorHandler';
 export const DB_CONFIG = {
   APP: {
     NAME: 'FinTrackDB',
-    VERSION: 2, // Incremented for new RSE stores
+    VERSION: 1,
     STORE: 'app_state'
   },
   AI: {
     NAME: 'StatementInsightsDB',
     VERSION: 2,
     STORE: 'knowledge_base'
-  },
-  SYNC: {
-    MUTATIONS: 'mutation_queue',
-    METADATA: 'sync_metadata'
   }
 };
 
@@ -31,22 +27,7 @@ export const openDatabase = (name: string, version: number, storeName: string): 
     
     request.onupgradeneeded = (event: any) => {
       const db = event.target.result;
-      
-      // Legacy app_state
-      if (!db.objectStoreNames.contains(DB_CONFIG.APP.STORE)) {
-        db.createObjectStore(DB_CONFIG.APP.STORE);
-      }
-      
-      // RSE Stores
-      if (!db.objectStoreNames.contains(DB_CONFIG.SYNC.MUTATIONS)) {
-        db.createObjectStore(DB_CONFIG.SYNC.MUTATIONS, { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains(DB_CONFIG.SYNC.METADATA)) {
-        db.createObjectStore(DB_CONFIG.SYNC.METADATA, { keyPath: 'tab' });
-      }
-      
-      // AI Store
-      if (name === DB_CONFIG.AI.NAME && !db.objectStoreNames.contains(storeName)) {
+      if (!db.objectStoreNames.contains(storeName)) {
         db.createObjectStore(storeName);
       }
     };

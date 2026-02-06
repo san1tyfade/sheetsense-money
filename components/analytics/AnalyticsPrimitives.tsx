@@ -83,22 +83,13 @@ export const StandardTooltip = ({ active, payload, label, isDarkMode }: any) => 
   const { isGhostMode } = useFinancialStore();
   if (!active || !payload?.length) return null;
 
-  // Filter out items that should be hidden based on Recharts props
-  // and deduplicate by name/value to handle layered chart components
-  const filteredPayload = payload.filter((p: any, idx: number) => {
-    if (p.hide || p.tooltipType === 'none' || p.payload?.tooltipType === 'none') return false;
-    return payload.findIndex((o: any) => o.name === p.name && o.value === p.value) === idx;
-  });
-
-  if (filteredPayload.length === 0) return null;
-
-  const total = filteredPayload.reduce((acc: number, p: any) => acc + (typeof p.value === 'number' ? p.value : 0), 0);
+  const total = payload.reduce((acc: number, p: any) => acc + (typeof p.value === 'number' ? p.value : 0), 0);
   
   const globalFinanceKeys = ['income', 'expense', 'value', 'principal', 'net', 'current', 'shadow', 'benchmark', 'portfolio'];
-  const isAdditive = filteredPayload.length > 1 && 
-    !filteredPayload.some((p: any) => globalFinanceKeys.includes(p.dataKey?.toString().toLowerCase()));
+  const isAdditive = payload.length > 1 && 
+    !payload.some((p: any) => globalFinanceKeys.includes(p.dataKey?.toString().toLowerCase()));
 
-  const headerText = label || filteredPayload[0].payload.name || filteredPayload[0].payload.date || 'Details';
+  const headerText = label || payload[0].payload.name || payload[0].payload.date || 'Details';
 
   return (
     <div className="bg-slate-900/95 backdrop-blur-md border border-slate-700 p-4 rounded-2xl shadow-2xl space-y-2 min-w-[200px] z-[100]">
@@ -106,7 +97,7 @@ export const StandardTooltip = ({ active, payload, label, isDarkMode }: any) => 
         {headerText}
       </p>
       <div className="max-h-[250px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-        {filteredPayload.map((p: any, i: number) => (
+        {payload.map((p: any, i: number) => (
           <div key={i} className="flex justify-between gap-6 text-[10px] font-black items-center">
             <div className="flex items-center gap-2 truncate flex-1">
               {p.color && <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />}
