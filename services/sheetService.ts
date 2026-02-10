@@ -56,28 +56,7 @@ export const fetchSheetData = async (sheetId: string, tabName: string): Promise<
     return jsonToCsv(data.values);
 };
 
-/**
- * Probes the spreadsheet to determine the currently active financial year.
- */
-export const detectActiveYearFromSheet = async (sheetId: string, incomeTab: string): Promise<number | null> => {
-    try {
-        const resolvedTab = await resolveTabName(sheetId, incomeTab);
-        const data = await googleClient.getRange(sheetId, googleClient.formatRange(resolvedTab, 'B3'));
 
-        const header = data.values?.[0]?.[0];
-        if (!header) return null;
-
-        const yearMatch = header.match(/[ \-]+(\d{2,4})$/);
-        if (yearMatch) {
-            const yearPart = yearMatch[1];
-            return yearPart.length === 2 ? 2000 + parseInt(yearPart) : parseInt(yearPart);
-        }
-        return null;
-    } catch (e) {
-        console.warn("Year detection failed", e);
-        return null;
-    }
-};
 
 /**
  * Fetches metadata for all tabs in the spreadsheet.

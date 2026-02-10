@@ -77,13 +77,13 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [timeline, setTimeline] = useState<Transaction[]>([]);
   const [identityMatrix, setIdentityMatrix] = useState<Record<string, string>>({});
-  
+
   const reconciled = useMemo(() => reconcileInvestments(investments, trades), [investments, trades]);
-  
+
   // Calculate distinct tickers for live price monitoring
   const tickers = useMemo(() => Array.from(new Set(reconciled.map(i => i.ticker))), [reconciled]);
   const { livePrices, isFetching: isFetchingPrices } = usePriceEngine(tickers);
-  
+
   // Compute O(1) buffer for holdings rendering
   const valuatedHoldings = useValuatedHoldings(reconciled, trades, livePrices, rates);
 
@@ -112,7 +112,7 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   useEffect(() => {
-    buildUnifiedTimeline().then(setTimeline);
+    buildUnifiedTimeline(detailedIncome, detailedExpenses, selectedYear).then(setTimeline);
   }, [detailedIncome, detailedExpenses, selectedYear]);
 
   const value = useMemo(() => ({
@@ -121,7 +121,7 @@ export const LedgerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     netWorthHistory, setNetWorthHistory, portfolioHistory, setPortfolioHistory, debtEntries, setDebtEntries,
     incomeData, setIncomeData, expenseData, setExpenseData, detailedIncome, setDetailedIncome,
     detailedExpenses, setDetailedExpenses, taxRecords, setTaxRecords,
-    reconciledInvestments: reconciled, 
+    reconciledInvestments: reconciled,
     valuatedHoldings,
     timeline, identityMatrix, refreshIdentityMatrix,
     selectedYear, setSelectedYear,

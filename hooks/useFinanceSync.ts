@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { 
+import {
   Asset, Investment, Trade, Subscription, BankAccount, JournalEntry,
-  NetWorthEntry, PortfolioLogEntry, DebtEntry, IncomeEntry, 
+  NetWorthEntry, PortfolioLogEntry, DebtEntry, IncomeEntry,
   ExpenseEntry, LedgerData, SheetConfig, IncomeAndExpenses,
   SyncStatus, SyncConflict
 } from '../types';
@@ -11,7 +11,7 @@ import { parseRawData } from '../services/deterministicUtils';
 // Fix: Imported commitItemToSheet to support delta persistence
 import { commitItemToSheet } from '../services/sheetWriteService';
 
-export interface SyncDispatcher {
+interface SyncDispatcher {
   setAssets: (data: Asset[]) => void;
   setInvestments: (data: Investment[]) => void;
   setTrades: (data: Trade[]) => void;
@@ -35,7 +35,7 @@ export function useFinanceSync(config: SheetConfig, dispatcher: SyncDispatcher, 
   const [syncingTabs, setSyncingTabs] = useState<Set<string>>(new Set());
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(null);
   const [conflict, setConflict] = useState<SyncConflict | null>(null);
-  
+
   const [remoteArchives, setRemoteArchives] = useState<number[]>([activeYear]);
   const [allRemoteTabNames, setAllRemoteTabNames] = useState<string[]>([]);
   const isDiscoveryRunning = useRef(false);
@@ -51,12 +51,12 @@ export function useFinanceSync(config: SheetConfig, dispatcher: SyncDispatcher, 
 
   const scanForRemoteArchives = useCallback(async () => {
     if (!config.sheetId || isDiscoveryRunning.current) return;
-    
+
     isDiscoveryRunning.current = true;
     try {
       const tabNames = await fetchTabNames(config.sheetId);
       setAllRemoteTabNames(tabNames);
-      
+
       const foundYears = new Set<number>();
       tabNames.forEach(name => {
         const match = name.match(/[ -]?(\d{2,4})$/);
@@ -67,7 +67,7 @@ export function useFinanceSync(config: SheetConfig, dispatcher: SyncDispatcher, 
         }
       });
       if (activeYear) foundYears.add(activeYear);
-      
+
       const finalArchives = Array.from(foundYears).sort((a, b) => b - a);
       if (finalArchives.length > 0) {
         setRemoteArchives(finalArchives);
@@ -84,14 +84,14 @@ export function useFinanceSync(config: SheetConfig, dispatcher: SyncDispatcher, 
     const exactMatch = availableNames.find(n => n === requestedName);
     if (exactMatch) return exactMatch;
     if (year) {
-        const yearShort = String(year).slice(-2);
-        const yearFull = String(year);
-        const base = requestedName.split('-')[0].split(' ')[0].toLowerCase();
-        const archivalMatch = availableNames.find(n => {
-            const low = n.toLowerCase();
-            return low.includes(base) && (low.endsWith(yearShort) || low.endsWith(yearFull));
-        });
-        if (archivalMatch) return archivalMatch;
+      const yearShort = String(year).slice(-2);
+      const yearFull = String(year);
+      const base = requestedName.split('-')[0].split(' ')[0].toLowerCase();
+      const archivalMatch = availableNames.find(n => {
+        const low = n.toLowerCase();
+        return low.includes(base) && (low.endsWith(yearShort) || low.endsWith(yearFull));
+      });
+      if (archivalMatch) return archivalMatch;
     }
     return availableNames.find(n => n.toLowerCase() === requestedName.toLowerCase()) || requestedName;
   };
@@ -121,28 +121,28 @@ export function useFinanceSync(config: SheetConfig, dispatcher: SyncDispatcher, 
     const targets = specificTabs && specificTabs.length > 0 ? specificTabs : (Object.keys(config.tabNames) as (keyof SheetConfig['tabNames'])[]);
     targets.forEach(t => setSyncingTabs(prev => new Set(prev).add(t)));
     const fetchSafe = async <T,>(tabName: string, type: any): Promise<T> => {
-      const rawData = await fetchSheetData(config.sheetId, tabName); 
-      return await parseRawData<T>(rawData, type); 
+      const rawData = await fetchSheetData(config.sheetId, tabName);
+      return await parseRawData<T>(rawData, type);
     };
     try {
       await Promise.all(targets.map(async key => {
         const baseName = config.tabNames[key];
         const isHistorical = selectedYear !== activeYear;
         const actualTabName = resolveRemoteTabName(
-            (isHistorical && ['income', 'expenses'].includes(key)) ? `${baseName}-${String(selectedYear).slice(-2)}` : baseName,
-            allRemoteTabNames,
-            isHistorical ? selectedYear : undefined
+          (isHistorical && ['income', 'expenses'].includes(key)) ? `${baseName}-${String(selectedYear).slice(-2)}` : baseName,
+          allRemoteTabNames,
+          isHistorical ? selectedYear : undefined
         );
-        
+
         const pool = dataPools ? (dataPools[key] || dataPools[`${key}Entries`] || dataPools[`${key}Data`] || dataPools[key]) : undefined;
         let dirtyCount = 0;
         if (Array.isArray(pool)) {
-            dirtyCount = pool.filter((i: any) => i.isDirty).length;
+          dirtyCount = pool.filter((i: any) => i.isDirty).length;
         }
 
         if (dirtyCount > 0) {
-            setConflict({ tab: key, localTimestamp: new Date().toISOString(), remoteTimestamp: new Date().toISOString(), dirtyCount });
-            throw new Error("CONFLICT_DETECTED");
+          setConflict({ tab: key, localTimestamp: new Date().toISOString(), remoteTimestamp: new Date().toISOString(), dirtyCount });
+          throw new Error("CONFLICT_DETECTED");
         }
 
         try {
@@ -156,30 +156,30 @@ export function useFinanceSync(config: SheetConfig, dispatcher: SyncDispatcher, 
             case 'logData': dispatcher.setNetWorthHistory(await fetchSafe<NetWorthEntry[]>(actualTabName, 'logData')); break;
             case 'portfolioLog': dispatcher.setPortfolioHistory(await fetchSafe<PortfolioLogEntry[]>(actualTabName, 'portfolioLog')); break;
             case 'debt': dispatcher.setDebtEntries(await fetchSafe<DebtEntry[]>(actualTabName, 'debt')); break;
-            case 'income': 
-              const finData = await fetchSafe<IncomeAndExpenses>(actualTabName, 'income'); 
-              dispatcher.setIncomeData(finData.income); 
+            case 'income':
+              const finData = await fetchSafe<IncomeAndExpenses>(actualTabName, 'income');
+              dispatcher.setIncomeData(finData.income);
               dispatcher.setExpenseData(finData.expenses);
               dispatcher.setDetailedIncome(await fetchSafe<LedgerData>(actualTabName, 'detailedIncome'));
               if (config.tabNames.expenses === config.tabNames.income) dispatcher.setDetailedExpenses(await fetchSafe(actualTabName, 'detailedExpenses'));
               break;
-            case 'expenses': 
-              if (config.tabNames.expenses !== config.tabNames.income) dispatcher.setDetailedExpenses(await fetchSafe(actualTabName, 'detailedExpenses')); 
+            case 'expenses':
+              if (config.tabNames.expenses !== config.tabNames.income) dispatcher.setDetailedExpenses(await fetchSafe(actualTabName, 'detailedExpenses'));
               break;
           }
-        } finally { 
-          setSyncingTabs(prev => { const next = new Set(prev); next.delete(key); return next; }); 
+        } finally {
+          setSyncingTabs(prev => { const next = new Set(prev); next.delete(key); return next; });
         }
       }));
       dispatcher.setLastUpdatedStr(new Date().toISOString());
       setSyncStatus({ type: 'success', msg: 'Core Synchronized' });
-    } catch (e: any) { 
+    } catch (e: any) {
       if (e.message !== 'CONFLICT_DETECTED') {
-          setSyncStatus({ type: 'error', msg: e.message || "Sync failed." }); 
-          setSyncingTabs(new Set());
+        setSyncStatus({ type: 'error', msg: e.message || "Sync failed." });
+        setSyncingTabs(new Set());
       }
-    } finally { 
-      setIsSyncing(false); 
+    } finally {
+      setIsSyncing(false);
     }
   }, [config, activeYear, selectedYear, dispatcher, allRemoteTabNames]);
 

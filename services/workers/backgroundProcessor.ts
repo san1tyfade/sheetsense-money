@@ -3,7 +3,7 @@
  * Offloads CPU-intensive tasks from the main thread.
  */
 
-export const createWorker = (fn: Function) => {
+const createWorker = (fn: Function) => {
     const blob = new Blob([`(${fn.toString()})()`], { type: 'application/javascript' });
     return new Worker(URL.createObjectURL(blob));
 };
@@ -25,7 +25,7 @@ const workerLogic = () => {
                     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
                     self.postMessage({ type: 'SUCCESS', result: hashHex });
                     break;
-                
+
                 default:
                     self.postMessage({ type: 'ERROR', error: 'UNKNOWN_TASK' });
             }
@@ -35,18 +35,3 @@ const workerLogic = () => {
     };
 };
 
-export const runTaskInBackground = <T>(type: string, payload: any): Promise<T> => {
-    return new Promise((resolve, reject) => {
-        const worker = createWorker(workerLogic);
-        worker.onmessage = (e) => {
-            if (e.data.type === 'SUCCESS') resolve(e.data.result);
-            else reject(new Error(e.data.error));
-            worker.terminate();
-        };
-        worker.onerror = (e) => {
-            reject(e);
-            worker.terminate();
-        };
-        worker.postMessage({ type, payload });
-    });
-};

@@ -40,10 +40,10 @@ export const restoreSession = (token: string, expiration: number) => {
 
 export const initGoogleAuth = (clientId: string) => {
   if (!window.google) {
-      return false;
+    return false;
   }
   if (tokenClient && currentClientId === clientId) return true;
-  
+
   try {
     tokenClient = window.google.accounts.oauth2.initTokenClient({
       client_id: clientId,
@@ -64,12 +64,12 @@ export const initGoogleAuth = (clientId: string) => {
   }
 };
 
-export const signIn = async (forceConsent = false): Promise<{token: string, expires: number}> => {
+export const signIn = async (forceConsent = false): Promise<{ token: string, expires: number }> => {
   if (accessToken && Date.now() < (tokenExpiration - 300000)) return { token: accessToken, expires: tokenExpiration };
 
   return new Promise((resolve, reject) => {
     if (!tokenClient) {
-        return reject(new AppError(IEP.AUTH.GSI_MISSING, "Google Identity Library not initialized.", 'CRITICAL'));
+      return reject(new AppError(IEP.AUTH.GSI_MISSING, "Google Identity Library not initialized.", 'CRITICAL'));
     }
     resolveQueue.push({ resolve: (t) => resolve({ token: t, expires: tokenExpiration }) });
     tokenClient.requestAccessToken(forceConsent ? { prompt: 'consent' } : {});
@@ -79,7 +79,7 @@ export const signIn = async (forceConsent = false): Promise<{token: string, expi
 export const getAccessToken = () => (accessToken && Date.now() < (tokenExpiration - 60000)) ? accessToken : null;
 
 export const signOut = () => {
-  if (accessToken) window.google?.accounts?.oauth2.revoke(accessToken, () => {});
+  if (accessToken) window.google?.accounts?.oauth2.revoke(accessToken, () => { });
   accessToken = null;
   tokenExpiration = 0;
 };
@@ -101,9 +101,9 @@ export const performFullSignIn = async (clientId: string): Promise<{ session: { 
   const initialized = initGoogleAuth(clientId);
   if (!initialized) throw new AppError(IEP.AUTH.GSI_MISSING, "GSI infrastructure missing.", 'CRITICAL');
 
-  const session = await signIn(true); 
+  const session = await signIn(true);
   const profile = await fetchUserProfile(session.token);
-  
+
   if (!profile) {
     throw new AppError(IEP.AUTH.PROFILE_FAIL, "Failed to capture user identity profile.");
   }
@@ -114,12 +114,12 @@ export const performFullSignIn = async (clientId: string): Promise<{ session: { 
 /**
  * Attempt to copy the master template. 
  */
-export const copyMasterTemplate = async (templateId: string, fileName: string) => {
+const copyMasterTemplate = async (templateId: string, fileName: string) => {
   return googleClient.request(`https://www.googleapis.com/drive/v3/files/${templateId}/copy`, {
     method: 'POST',
     body: { name: fileName }
   }).then(data => ({
-    id: data.id, 
+    id: data.id,
     url: `https://docs.google.com/spreadsheets/d/${data.id}/edit`
   }));
 };

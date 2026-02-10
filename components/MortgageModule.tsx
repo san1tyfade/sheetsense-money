@@ -26,13 +26,13 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             </span>
           )}
         </div>
-        
+
         <div className="space-y-4">
           <div className="flex flex-col">
             <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Your Strategy Balance</span>
             <span className="text-2xl font-black text-white tracking-tight font-mono">${formatCurrency(strategyVal, 0, 0)}</span>
           </div>
-          
+
           <div className="flex flex-col border-t border-slate-800 pt-3">
             <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Standard Path Balance</span>
             <span className="text-lg font-bold text-slate-400 tracking-tight font-mono">${formatCurrency(standardVal, 0, 0)}</span>
@@ -63,6 +63,19 @@ export const MortgageModule: React.FC = () => {
   const [scenarios, setScenarios] = useState<MortgageScenario[]>([]);
   const [scenarioName, setScenarioName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Debounce inputs for expensive calculations
+  const [debouncedInputs, setDebouncedInputs] = useState<MortgageInput>(inputs);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedInputs(inputs);
+    }, 300); // 300ms delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [inputs]);
 
   useEffect(() => {
     loadScenarios();
@@ -104,18 +117,20 @@ export const MortgageModule: React.FC = () => {
     setInputs(scenario.inputs);
   };
 
-  const schedule = useMemo(() => calculateAmortization(inputs), [inputs]);
+  // Schedule depends on DEBOUNCED inputs
+  const schedule = useMemo(() => calculateAmortization(debouncedInputs), [debouncedInputs]);
 
+  // Stats depend on SCHEDULE (which complies with debounced inputs) and DEBOUNCED inputs (for consistency)
   const stats = useMemo(() => {
     const finalPoint = schedule[schedule.length - 1];
     const lastAcc = schedule.find(s => s.acceleratedBalance <= 0) || finalPoint;
-    
+
     const timeSavedPeriods = schedule.length - lastAcc.period - 1;
-    const periodsPerYear = inputs.frequency === PaymentFrequency.MONTHLY ? 12 : 26;
-    
+    const periodsPerYear = debouncedInputs.frequency === PaymentFrequency.MONTHLY ? 12 : 26;
+
     const milestonePeriod = periodsPerYear * RENEWAL_YEAR_BENCHMARK;
     const mPoint = schedule[Math.min(milestonePeriod, schedule.length - 1)];
-    
+
     const monthlyPre = (schedule[Math.max(1, milestonePeriod - 1)].acceleratedPayment * periodsPerYear) / 12;
     const monthlyPost = (schedule[Math.min(schedule.length - 1, milestonePeriod + 1)].acceleratedPayment * periodsPerYear) / 12;
     const shockAmount = monthlyPost - monthlyPre;
@@ -128,28 +143,28 @@ export const MortgageModule: React.FC = () => {
       payoffYear: new Date().getFullYear() + lastAcc.year,
       milestone: {
         balance: mPoint.acceleratedBalance,
-        equity: inputs.principal - mPoint.acceleratedBalance,
-        ratio: ((inputs.principal - mPoint.acceleratedBalance) / (inputs.principal || 1)) * 100
+        equity: debouncedInputs.principal - mPoint.acceleratedBalance,
+        ratio: ((debouncedInputs.principal - mPoint.acceleratedBalance) / (debouncedInputs.principal || 1)) * 100
       },
       pith: {
-        total: (schedule[1]?.acceleratedPayment || 0) * (periodsPerYear / 12) + (inputs.propertyTaxes / 12) + inputs.heatingCost,
-        taxPercent: ((inputs.propertyTaxes / 12) / (((schedule[1]?.acceleratedPayment || 0) * (periodsPerYear / 12) + (inputs.propertyTaxes / 12) + inputs.heatingCost) || 1)) * 100,
-        heatPercent: (inputs.heatingCost / (((schedule[1]?.acceleratedPayment || 0) * (periodsPerYear / 12) + (inputs.propertyTaxes / 12) + inputs.heatingCost) || 1)) * 100
+        total: (schedule[1]?.acceleratedPayment || 0) * (periodsPerYear / 12) + (debouncedInputs.propertyTaxes / 12) + debouncedInputs.heatingCost,
+        taxPercent: ((debouncedInputs.propertyTaxes / 12) / (((schedule[1]?.acceleratedPayment || 0) * (periodsPerYear / 12) + (debouncedInputs.propertyTaxes / 12) + debouncedInputs.heatingCost) || 1)) * 100,
+        heatPercent: (debouncedInputs.heatingCost / (((schedule[1]?.acceleratedPayment || 0) * (periodsPerYear / 12) + (debouncedInputs.propertyTaxes / 12) + debouncedInputs.heatingCost) || 1)) * 100
       },
       shock: {
         amount: shockAmount,
         percent: (shockAmount / (monthlyPre || 1)) * 100
       }
     };
-  }, [schedule, inputs]);
+  }, [schedule, debouncedInputs]);
 
   const chartTicks = useMemo(() => {
     const ticks = [];
     const step = 5;
-    for (let i = 0; i <= inputs.termYears; i += step) ticks.push(i);
-    if (ticks[ticks.length - 1] !== inputs.termYears) ticks.push(inputs.termYears);
+    for (let i = 0; i <= debouncedInputs.termYears; i += step) ticks.push(i);
+    if (ticks[ticks.length - 1] !== debouncedInputs.termYears) ticks.push(debouncedInputs.termYears);
     return ticks;
-  }, [inputs.termYears]);
+  }, [debouncedInputs.termYears]);
 
   const handleInputChange = (key: keyof MortgageInput, value: any) => {
     setInputs(prev => ({ ...prev, [key]: value }));
@@ -186,9 +201,9 @@ export const MortgageModule: React.FC = () => {
           </div>
           <div className="space-y-4 mt-8">
             <div className="h-2 w-full bg-slate-100 dark:bg-slate-950 rounded-full flex overflow-hidden shadow-inner border border-slate-200 dark:border-slate-700">
-               <div className="h-full bg-indigo-500" style={{ width: `${100 - stats.pith.taxPercent - stats.pith.heatPercent}%` }}></div>
-               <div className="h-full bg-amber-400" style={{ width: `${stats.pith.taxPercent}%` }}></div>
-               <div className="h-full bg-rose-500" style={{ width: `${stats.pith.heatPercent}%` }}></div>
+              <div className="h-full bg-indigo-500" style={{ width: `${100 - stats.pith.taxPercent - stats.pith.heatPercent}%` }}></div>
+              <div className="h-full bg-amber-400" style={{ width: `${stats.pith.taxPercent}%` }}></div>
+              <div className="h-full bg-rose-500" style={{ width: `${stats.pith.heatPercent}%` }}></div>
             </div>
             <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest">
               <span>MTG</span>
@@ -208,8 +223,8 @@ export const MortgageModule: React.FC = () => {
             </h2>
           </div>
           <div className="mt-8 text-[10px] font-black uppercase tracking-wider text-slate-400 leading-relaxed opacity-80 italic">
-            {inputs.isStressTestEnabled 
-              ? `Periodic pmt jump: ${stats.shock.percent.toFixed(1)}%` 
+            {inputs.isStressTestEnabled
+              ? `Periodic pmt jump: ${stats.shock.percent.toFixed(1)}%`
               : `Net Amortized: ${stats.milestone.ratio.toFixed(1)}%`}
           </div>
         </div>
@@ -219,7 +234,7 @@ export const MortgageModule: React.FC = () => {
         <div className="lg:col-span-4 space-y-8">
           <div className="bg-white dark:bg-slate-800/40 rounded-[3rem] shadow-sm border border-slate-200 dark:border-slate-700/50 overflow-hidden backdrop-blur-xl">
             <div className="bg-slate-50 dark:bg-slate-950/40 px-8 py-6 border-b border-slate-200 dark:border-slate-700 flex items-center gap-4 overflow-x-auto no-scrollbar">
-              <button 
+              <button
                 onClick={() => setInputs({ ...inputs, extraMonthly: 0, extraAnnualPercent: 0, isStressTestEnabled: false })}
                 className="whitespace-nowrap px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600 transition-all shadow-sm"
               >
@@ -227,7 +242,7 @@ export const MortgageModule: React.FC = () => {
               </button>
               {scenarios.map((s, idx) => (
                 <div key={s.id} className="relative group shrink-0">
-                  <button 
+                  <button
                     onClick={() => handleLoadScenario(s)}
                     className="whitespace-nowrap px-5 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-all shadow-sm"
                   >
@@ -239,9 +254,9 @@ export const MortgageModule: React.FC = () => {
                 </div>
               ))}
               <div className="flex items-center gap-2 border-l border-slate-200 dark:border-slate-700 pl-4">
-                 <input 
-                  type="text" 
-                  placeholder="ID..." 
+                <input
+                  type="text"
+                  placeholder="ID..."
                   value={scenarioName}
                   onChange={(e) => setScenarioName(e.target.value)}
                   className="w-12 bg-transparent text-[10px] font-black uppercase outline-none border-b border-slate-200 dark:border-slate-700 focus:border-blue-500 placeholder:text-slate-400 text-slate-900 dark:text-white"
@@ -259,7 +274,7 @@ export const MortgageModule: React.FC = () => {
                   <span className="text-sm font-black font-mono text-blue-600 dark:text-blue-400">${formatCurrency(inputs.principal)}</span>
                 </div>
                 <input type="range" min="100000" max="2000000" step="10000" value={inputs.principal} onChange={(e) => handleInputChange('principal', parseFloat(e.target.value))} className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600" />
-                
+
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-3">
                     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Node Rate %</label>
@@ -270,14 +285,14 @@ export const MortgageModule: React.FC = () => {
                     <input type="number" value={inputs.termYears} onChange={(e) => handleInputChange('termYears', parseInt(e.target.value))} className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-black font-mono outline-none focus:border-blue-500 transition-all text-slate-900 dark:text-white" />
                   </div>
                 </div>
-                
+
                 <div className="space-y-3">
                   <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Interaction Frequency</label>
                   <div className="grid grid-cols-3 gap-2 bg-slate-100 dark:bg-slate-950 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
                     {['MONTHLY', 'BI_WEEKLY', 'ACC_BI_WEEKLY'].map((f) => (
-                      <button 
-                        key={f} 
-                        onClick={() => handleInputChange('frequency', f)} 
+                      <button
+                        key={f}
+                        onClick={() => handleInputChange('frequency', f)}
                         className={`px-2 py-3 rounded-xl text-[8px] font-black uppercase tracking-tighter transition-all ${inputs.frequency === f ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                       >
                         {f.split('_').join(' ')}
@@ -354,27 +369,27 @@ export const MortgageModule: React.FC = () => {
             <div className="relative z-10">
               <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight uppercase leading-none mb-3">Amortization Gradient</h3>
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-12">Delta analysis of accelerated vs nominal strategy</p>
-              
+
               <div className="h-[480px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={schedule}>
                     <defs>
                       <linearGradient id="colorStd" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.1}/><stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.1} /><stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="colorAcc" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/><stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2} /><stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" opacity={0.1} />
-                    <XAxis 
-                      dataKey="year" 
+                    <XAxis
+                      dataKey="year"
                       ticks={chartTicks}
-                      tick={{fontSize: 10, fill: '#64748b', fontWeight: '900'}} 
-                      axisLine={false} tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#64748b', fontWeight: '900' }}
+                      axisLine={false} tickLine={false}
                       label={{ value: 'AMORTIZATION YEAR', position: 'bottom', offset: -10, fill: '#94a3b8', fontSize: 10, fontWeight: '900', letterSpacing: '0.2em' }}
                     />
-                    <YAxis tick={{fontSize: 10, fill: '#64748b', fontWeight: '900'}} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v/1000).toFixed(0)}k`} width={50} />
+                    <YAxis tick={{ fontSize: 10, fill: '#64748b', fontWeight: '900' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} width={50} />
                     <Tooltip content={<CustomTooltip />} />
                     <Area type="monotone" dataKey="balance" stroke="#94a3b8" fill="url(#colorStd)" strokeWidth={2} strokeDasharray="8 6" />
                     <Area type="monotone" dataKey="acceleratedBalance" stroke="#4f46e5" fill="url(#colorAcc)" strokeWidth={5} />
@@ -400,7 +415,7 @@ export const MortgageModule: React.FC = () => {
 
           <div className="bg-emerald-500/10 border-2 border-emerald-500/20 p-10 rounded-[3.5rem] flex items-center gap-10 shadow-sm backdrop-blur-xl group">
             <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-emerald-500/30 shrink-0 group-hover:scale-105 transition-transform duration-500">
-               <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
             </div>
             <div className="space-y-2">
               <p className="text-emerald-800 dark:text-emerald-400 font-black text-2xl tracking-tight leading-snug">

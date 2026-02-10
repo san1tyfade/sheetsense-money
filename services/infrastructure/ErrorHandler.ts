@@ -3,7 +3,7 @@
  * Central authority for fault management.
  */
 
-export type ErrorSeverity = 'CRITICAL' | 'RECOVERABLE' | 'SILENT';
+type ErrorSeverity = 'CRITICAL' | 'RECOVERABLE' | 'SILENT';
 
 export class AppError extends Error {
   code: string;

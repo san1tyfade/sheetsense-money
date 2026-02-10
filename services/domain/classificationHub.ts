@@ -13,37 +13,37 @@ export enum AssetMajorClass {
  * Global Authority on Financial Identity Tokens.
  */
 const IDENTITY_TOKENS = {
-    TFSA: ['TFSA', 'TAX FREE SAVINGS'],
-    RRSP: ['RRSP', 'RSP', 'RETIREMENT SAVINGS'],
-    FHSA: ['FHSA', 'FIRST HOME SAVINGS'],
-    LAPP: ['LAPP', 'PENSION PLAN'],
-    RESP: ['RESP', 'EDUCATION SAVINGS']
+  TFSA: ['TFSA', 'TAX FREE SAVINGS'],
+  RRSP: ['RRSP', 'RSP', 'RETIREMENT SAVINGS'],
+  FHSA: ['FHSA', 'FIRST HOME SAVINGS'],
+  LAPP: ['LAPP', 'PENSION PLAN'],
+  RESP: ['RESP', 'EDUCATION SAVINGS']
 };
 
 /**
  * Resolves the logical asset type based on name tokens.
  */
 export const resolveAssetType = (name: string, currentType: string = 'Other'): string => {
-    const n = (name || '').toUpperCase();
-    if (IDENTITY_TOKENS.TFSA.some(t => n.includes(t))) return 'TFSA';
-    if (IDENTITY_TOKENS.RRSP.some(t => n.includes(t))) return 'RRSP';
-    if (IDENTITY_TOKENS.FHSA.some(t => n.includes(t))) return 'FHSA';
-    if (IDENTITY_TOKENS.LAPP.some(t => n.includes(t))) return 'LAPP';
-    if (IDENTITY_TOKENS.RESP.some(t => n.includes(t))) return 'RESP';
-    return currentType;
+  const n = (name || '').toUpperCase();
+  if (IDENTITY_TOKENS.TFSA.some(t => n.includes(t))) return 'TFSA';
+  if (IDENTITY_TOKENS.RRSP.some(t => n.includes(t))) return 'RRSP';
+  if (IDENTITY_TOKENS.FHSA.some(t => n.includes(t))) return 'FHSA';
+  if (IDENTITY_TOKENS.LAPP.some(t => n.includes(t))) return 'LAPP';
+  if (IDENTITY_TOKENS.RESP.some(t => n.includes(t))) return 'RESP';
+  return currentType;
 };
 
 export const MANAGED_ACCOUNT_TOKENS = [
   ...IDENTITY_TOKENS.TFSA, ...IDENTITY_TOKENS.RRSP, ...IDENTITY_TOKENS.FHSA,
-  'LIRA', '401K', 'CRYPTO', 'BITCOIN', 'ETH', 'SOLANA', 'PORTFOLIO', 
+  'LIRA', '401K', 'CRYPTO', 'BITCOIN', 'ETH', 'SOLANA', 'PORTFOLIO',
   'DIGITAL ASSET', 'WEALTHSIMPLE', 'QUESTRADE', 'COINBASE', 'BINANCE'
 ];
 
 export const CRYPTO_TICKERS = [
-    'BTC', 'ETH', 'SOL', 'ADA', 'XRP', 'DOGE', 'DOT', 'LTC', 'AVAX', 'LINK', 
-    'MATIC', 'USDT', 'USDC', 'BNB', 'SHIB', 'TRX', 'UNI', 'ATOM', 'XMR', 
-    'ETC', 'BCH', 'FIL', 'NEAR', 'ALGO', 'ICP', 'VET', 'SAND', 'MANA', 
-    'AAVE', 'EOS', 'HBAR', 'PEPE', 'RNDR', 'STX', 'GRT', 'MKR', 'OP', 'ARB'
+  'BTC', 'ETH', 'SOL', 'ADA', 'XRP', 'DOGE', 'DOT', 'LTC', 'AVAX', 'LINK',
+  'MATIC', 'USDT', 'USDC', 'BNB', 'SHIB', 'TRX', 'UNI', 'ATOM', 'XMR',
+  'ETC', 'BCH', 'FIL', 'NEAR', 'ALGO', 'ICP', 'VET', 'SAND', 'MANA',
+  'AAVE', 'EOS', 'HBAR', 'PEPE', 'RNDR', 'STX', 'GRT', 'MKR', 'OP', 'ARB'
 ];
 
 const PATTERNS = {
@@ -56,8 +56,8 @@ const PATTERNS = {
 const CASH_TICKERS = ['CASH.TO', 'PSA.TO', 'HSAV.TO', 'CSAV.TO', 'NSAV.TO', 'MNY.TO', 'CASH', 'USD', 'CAD'];
 
 export const isTickerCashEquivalent = (ticker: string): boolean => {
-    const t = (ticker || '').toUpperCase().trim();
-    return CASH_TICKERS.includes(t);
+  const t = (ticker || '').toUpperCase().trim();
+  return CASH_TICKERS.includes(t);
 };
 
 export const getAssetMajorClass = (asset: Asset): AssetMajorClass => {
@@ -69,29 +69,29 @@ export const getAssetMajorClass = (asset: Asset): AssetMajorClass => {
   if (PATTERNS.CASH.some(p => combined.includes(p))) return AssetMajorClass.CASH;
   if (PATTERNS.INVESTMENT.some(p => combined.includes(p))) return AssetMajorClass.INVESTMENT;
   if (PATTERNS.FIXED.some(p => combined.includes(p))) return AssetMajorClass.FIXED;
-  return AssetMajorClass.CASH; 
+  return AssetMajorClass.CASH;
 };
 
 export const isCryptoAsset = (ticker: string, assetClass?: string, accountName?: string): boolean => {
-    const t = (ticker || '').toUpperCase().trim();
-    const cls = (assetClass || '').toUpperCase();
-    const acc = (accountName || '').toUpperCase();
-    return CRYPTO_TICKERS.includes(t) || t.includes('-USD') || t.includes('-CAD') || cls.includes('CRYPTO') || cls.includes('COIN') || acc.includes('CRYPTO') || acc.includes('COINBASE') || acc.includes('BINANCE');
+  const t = (ticker || '').toUpperCase().trim();
+  const cls = (assetClass || '').toUpperCase();
+  const acc = (accountName || '').toUpperCase();
+  return CRYPTO_TICKERS.includes(t) || t.includes('-USD') || t.includes('-CAD') || cls.includes('CRYPTO') || cls.includes('COIN') || acc.includes('CRYPTO') || acc.includes('COINBASE') || acc.includes('BINANCE');
 };
 
 export const isAssetManagedByLiveFeed = (asset: Asset): boolean => {
-    if (asset.isManaged) return true;
-    const majorClass = getAssetMajorClass(asset);
-    if (majorClass !== AssetMajorClass.INVESTMENT) return false;
-    const name = (asset.name || '').toUpperCase().trim();
-    const type = (asset.type || '').toUpperCase().trim();
-    return MANAGED_ACCOUNT_TOKENS.some(token => name === token || type === token || name.includes(` ${token}`) || name.startsWith(`${token} `) || name.includes(`(${token})`));
+  if (asset.isManaged) return true;
+  const majorClass = getAssetMajorClass(asset);
+  if (majorClass !== AssetMajorClass.INVESTMENT) return false;
+  const name = (asset.name || '').toUpperCase().trim();
+  const type = (asset.type || '').toUpperCase().trim();
+  return MANAGED_ACCOUNT_TOKENS.some(token => name === token || type === token || name.includes(` ${token}`) || name.startsWith(`${token} `) || name.includes(`(${token})`));
 };
 
 export const isInvestment = (asset: Asset) => getAssetMajorClass(asset) === AssetMajorClass.INVESTMENT;
 export const isCash = (asset: Asset) => getAssetMajorClass(asset) === AssetMajorClass.CASH;
 export const isFixed = (asset: Asset) => getAssetMajorClass(asset) === AssetMajorClass.FIXED;
-export const isLiability = (asset: Asset) => getAssetMajorClass(asset) === AssetMajorClass.LIABILITY;
+
 
 export const getAssetIcon = (type: string) => {
   const t = type.toLowerCase();

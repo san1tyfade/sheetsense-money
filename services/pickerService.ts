@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export interface PickerResult {
+interface PickerResult {
   id: string;
   name: string;
   url: string;
@@ -34,7 +34,7 @@ let isGapiLoading = false;
  */
 export const openPicker = async (clientId?: string): Promise<PickerResult | null> => {
   const token = getAccessToken();
-  
+
   if (!token) {
     throw new Error("AUTH_EXPIRED: Authentication session expired. Please sign in again.");
   }
@@ -44,11 +44,11 @@ export const openPicker = async (clientId?: string): Promise<PickerResult | null
       try {
         const google = window.google;
         if (!google || !google.picker) {
-           throw new Error("PICKER_UNINITIALIZED: Google Picker module not ready.");
+          throw new Error("PICKER_UNINITIALIZED: Google Picker module not ready.");
         }
 
         const view = new google.picker.View(google.picker.ViewId.SPREADSHEETS);
-        
+
         // Use a strictly formatted origin string (no trailing slash, explicit protocol)
         const origin = window.location.protocol + '//' + window.location.host;
 
@@ -60,8 +60,8 @@ export const openPicker = async (clientId?: string): Promise<PickerResult | null
         // Use App ID derived from the Client ID (usually the numerical prefix)
         // This acts as the project identifier in lieu of an API Key
         if (clientId) {
-            const appId = clientId.split('-')[0];
-            builder.setAppId(appId);
+          const appId = clientId.split('-')[0];
+          builder.setAppId(appId);
         }
 
         builder.setCallback((data: any) => {
@@ -76,7 +76,7 @@ export const openPicker = async (clientId?: string): Promise<PickerResult | null
             resolve(null);
           }
         });
-          
+
         const picker = builder.build();
         picker.setVisible(true);
       } catch (err) {
@@ -90,8 +90,8 @@ export const openPicker = async (clientId?: string): Promise<PickerResult | null
         reject(new Error("GAPI_MISSING: GAPI script not loaded."));
         return;
       }
-      
-      window.gapi.load('picker', { 
+
+      window.gapi.load('picker', {
         callback: showPicker,
         onerror: () => reject(new Error("PICKER_LOAD_FAILED: Failed to load Picker library."))
       });
@@ -111,15 +111,15 @@ export const openPicker = async (clientId?: string): Promise<PickerResult | null
 
     // If script is currently being injected, poll for it
     if (isGapiLoading) {
-        const poll = setInterval(() => {
-            if (window.gapi) {
-                clearInterval(poll);
-                loadPickerModule();
-            }
-        }, 100);
-        return;
+      const poll = setInterval(() => {
+        if (window.gapi) {
+          clearInterval(poll);
+          loadPickerModule();
+        }
+      }, 100);
+      return;
     }
-    
+
     isGapiLoading = true;
 
     const script = document.createElement('script');

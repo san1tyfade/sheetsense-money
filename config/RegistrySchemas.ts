@@ -3,7 +3,7 @@ import { resolveAssetType } from '../services/domain/classificationHub';
 
 export type FieldType = 'string' | 'number' | 'date' | 'boolean' | 'ticker';
 
-export interface FieldDefinition {
+interface FieldDefinition {
     keys: string[];
     type: FieldType;
     required?: boolean;

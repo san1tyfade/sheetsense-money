@@ -9,7 +9,7 @@ import { AppError, IEP } from "./ErrorHandler";
  */
 export const cleanMerchantDescription = (desc: string): string => {
   if (!desc) return '';
-  
+
   // Normalize whitespace first to ensure subsequent regexes match correctly
   let clean = desc.toUpperCase().replace(/\s+/g, ' ').trim();
 
@@ -52,23 +52,23 @@ export const intelligentCategorize = async (
   const memory = await getMerchantMemory();
   const identityMatrix = await getMerchantIdentities();
   const unknownMerchants = new Set<string>();
-  
+
   const mapped = transactions.map(tx => {
     const merchantRaw = (tx.description || 'Unknown').trim();
     const cleanMerchant = cleanMerchantDescription(merchantRaw);
-    
+
     // Check for explicit user mapping (Original -> Canonical)
     const userCanonical = identityMatrix[merchantRaw.toUpperCase()];
-    
+
     // Check for category memory (by raw or cleaned name)
     const knownCat = memory[merchantRaw.toUpperCase()] || memory[userCanonical || cleanMerchant];
 
     if (knownCat) {
-      return { 
-        ...tx, 
-        category: knownCat, 
+      return {
+        ...tx,
+        category: knownCat,
         canonicalName: userCanonical || cleanMerchant,
-        isNew: false 
+        isNew: false
       };
     }
     unknownMerchants.add(merchantRaw);
@@ -115,9 +115,9 @@ export const intelligentCategorize = async (
 
     let aiResults: any[] = [];
     try {
-        aiResults = JSON.parse(response.text || '[]');
+      aiResults = JSON.parse(response.text || '[]');
     } catch (parseErr) {
-        throw new AppError(IEP.INT.SCHEMA_MISMATCH, "Neural output malformation.", 'RECOVERABLE', parseErr);
+      throw new AppError(IEP.INT.SCHEMA_MISMATCH, "Neural output malformation.", 'RECOVERABLE', parseErr);
     }
 
     const finalizedCategoryMappings: Record<string, string> = {};
@@ -133,10 +133,10 @@ export const intelligentCategorize = async (
 
     // Save newly learned categories and identities to local IndexedDB
     if (Object.keys(finalizedCategoryMappings).length > 0) {
-        await batchSaveMerchantMemory(finalizedCategoryMappings);
+      await batchSaveMerchantMemory(finalizedCategoryMappings);
     }
     if (Object.keys(finalizedIdentityMappings).length > 0) {
-        await batchSaveMerchantIdentities(finalizedIdentityMappings);
+      await batchSaveMerchantIdentities(finalizedIdentityMappings);
     }
 
     return mapped.map(tx => {
@@ -144,13 +144,13 @@ export const intelligentCategorize = async (
       const normalized = tx.description.toUpperCase().trim();
       const aiCat = finalizedCategoryMappings[normalized];
       const aiCanonical = finalizedIdentityMappings[normalized];
-      
-      return { 
-        ...tx, 
-        category: aiCat || tx.category, 
+
+      return {
+        ...tx,
+        category: aiCat || tx.category,
         canonicalName: aiCanonical || cleanMerchantDescription(tx.description),
-        isNew: false, 
-        isAiResolved: !!aiCat 
+        isNew: false,
+        isAiResolved: !!aiCat
       };
     });
   } catch (error: any) {
@@ -161,43 +161,3 @@ export const intelligentCategorize = async (
   }
 };
 
-/**
- * Phase 2 Migration: Neural Narrative Synthesis
- * Generates a natural language brief for a financial node.
- */
-export const generateAuditNarrative = async (
-    title: string,
-    merchantStats: any[],
-    anomalies: any[]
-): Promise<string> => {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-    const context = `
-        Category: ${title}
-        Key Merchants: ${merchantStats.map(m => `${m.identity} (Total: $${m.l12mTotal.toFixed(0)})`).join(', ')}
-        Recent Anomalies: ${anomalies.map(a => `${a.type} event of ${a.variance.toFixed(0)}% deviation`).join(', ')}
-    `;
-
-    const prompt = `
-        You are a principal financial strategist. Analyze the provided context for the spending category "${title}".
-        Provide exactly two sentences of high-density analysis.
-        Sentence 1: Analyze stability and volume patterns.
-        Sentence 2: Flag specific anomalies or optimization opportunities.
-        Strict Rules: No pleasantries. complete sentences only.
-        Context: ${context}
-    `;
-
-    try {
-        const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: prompt,
-            config: { temperature: 0.4, topP: 0.8, maxOutputTokens: 250, thinkingConfig: { thinkingBudget: 100 } }
-        });
-        
-        const result = response.text?.trim() || "";
-        if (result.length < 15) return "Current trajectory reflects a standard baseline. Allocation remains consistent.";
-        return result;
-    } catch (error) {
-        return "Intelligence engine temporarily offline. Proceeding with raw statistical audit.";
-    }
-};

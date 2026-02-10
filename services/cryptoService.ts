@@ -23,7 +23,7 @@ export const bytesToBase64 = (bytes: Uint8Array): string => {
     return btoa(binary);
 };
 
-export const base64ToBytes = (base64: string): Uint8Array => {
+const base64ToBytes = (base64: string): Uint8Array => {
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) {
@@ -54,7 +54,7 @@ const internalCanonical = (obj: any): string => {
     return '{' + keys.map(key => `${JSON.stringify(key)}:${internalCanonical(obj[key])}`).join(',') + '}';
 };
 
-export const canonicalStringify = (obj: any): string => {
+const canonicalStringify = (obj: any): string => {
     const purified = JSON.parse(JSON.stringify(obj));
     return internalCanonical(purified);
 };
@@ -65,10 +65,10 @@ export const canonicalStringify = (obj: any): string => {
 const deriveKey = async (password: string, salt: Uint8Array): Promise<CryptoKey> => {
     const encoder = new TextEncoder();
     const baseKey = await crypto.subtle.importKey(
-        'raw', 
-        encoder.encode(password), 
-        'PBKDF2', 
-        false, 
+        'raw',
+        encoder.encode(password),
+        'PBKDF2',
+        false,
         ['deriveKey']
     );
 
@@ -95,7 +95,7 @@ export const encryptVault = async (data: string, seed: string, saltBase64: strin
         const salt = base64ToBytes(saltBase64);
         const key = await deriveKey(seed, salt);
         const iv = crypto.getRandomValues(new Uint8Array(12));
-        
+
         const encrypted = await crypto.subtle.encrypt(
             { name: AES_ALGO, iv },
             key,
@@ -120,9 +120,9 @@ export const decryptVault = async (ciphertextBase64: string, seed: string, saltB
         const salt = base64ToBytes(saltBase64);
         const iv = base64ToBytes(ivBase64);
         const ciphertext = base64ToBytes(ciphertextBase64);
-        
+
         const key = await deriveKey(seed, salt);
-        
+
         const decrypted = await crypto.subtle.decrypt(
             { name: AES_ALGO, iv },
             key,

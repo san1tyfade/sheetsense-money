@@ -3,9 +3,9 @@ import { cleanMerchantDescription } from '../infrastructure/IntelligenceProvider
 import { FinancialEngine } from '../math/FinancialEngine';
 import { TemporalSovereign } from '../temporalService';
 
-export type CadenceType = 'MONTHLY' | 'WEEKLY' | 'NONE';
+type CadenceType = 'MONTHLY' | 'WEEKLY' | 'NONE';
 
-export interface MerchantStats {
+interface MerchantStats {
     median: number;
     stdDev: number;
     avgCountPerMonth: number;
@@ -33,7 +33,7 @@ const detectCadence = (dates: string[]): CadenceType => {
     const sortedDates = [...dates].sort().map(d => new Date(d).getTime());
     const gaps: number[] = [];
     for (let i = 1; i < sortedDates.length; i++) {
-        gaps.push(Math.round((sortedDates[i] - sortedDates[i-1]) / (1000 * 60 * 60 * 24)));
+        gaps.push(Math.round((sortedDates[i] - sortedDates[i - 1]) / (1000 * 60 * 60 * 24)));
     }
     const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
     if (avgGap >= 25 && avgGap <= 33) return 'MONTHLY';
@@ -55,7 +55,7 @@ export const aggregateMerchantProfiles = (
     const todayISO = TemporalSovereign.getLogicalTodayISO();
     const now = new Date(todayISO);
     const l12mLimit = TemporalSovereign.toAbsoluteISO(new Date(now.getFullYear(), now.getMonth() - 12, 1));
-    
+
     const registeredIdentities = new Set(registry.map(s => cleanMerchantDescription(s.name)));
 
     // 1. Initialize

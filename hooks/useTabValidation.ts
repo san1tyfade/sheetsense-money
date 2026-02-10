@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { validateSheetTab } from '../services/sheetService';
 
-export type ValidationStatus = 'idle' | 'checking' | 'valid' | 'invalid';
+type ValidationStatus = 'idle' | 'checking' | 'valid' | 'invalid';
 
 export const useTabValidation = (sheetId: string, value: string, token?: string): ValidationStatus => {
   const [status, setStatus] = useState<ValidationStatus>('idle');

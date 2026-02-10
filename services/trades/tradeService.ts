@@ -2,7 +2,7 @@ import { Trade, TimeFocus } from '../../types';
 // Fix: Imported isDateInWindow from temporalService as isDateWithinFocus was missing in portfolioService
 import { isDateInWindow } from '../temporalService';
 
-export interface GroupedTradeStats {
+interface GroupedTradeStats {
     netQty: number;
     avgCost: number;
     totalInvested: number;
@@ -18,16 +18,16 @@ export interface TradeGroup {
 /**
  * Calculates aggregate stats for a list of trades (usually for a single ticker).
  */
-export const calculateTradeStats = (trades: Trade[]): GroupedTradeStats => {
+const calculateTradeStats = (trades: Trade[]): GroupedTradeStats => {
     let bQty = 0, bCost = 0, sQty = 0;
     trades.forEach(t => {
         const q = Math.abs(t.quantity || 0);
         const val = Math.abs(t.total || 0);
-        if (t.type === 'BUY') { 
-            bQty += q; 
-            bCost += val; 
-        } else { 
-            sQty += q; 
+        if (t.type === 'BUY') {
+            bQty += q;
+            bCost += val;
+        } else {
+            sQty += q;
         }
     });
     const net = bQty - sQty;
@@ -52,7 +52,7 @@ export const filterAndProcessTrades = (
     hideExited: boolean
 ): Trade[] | TradeGroup[] => {
     const term = searchTerm.toLowerCase();
-    
+
     // 1. Filtering
     let filtered = trades.filter(t => {
         const matchesSearch = t.ticker.toLowerCase().includes(term) || t.date.includes(term);
@@ -76,10 +76,10 @@ export const filterAndProcessTrades = (
     });
 
     return Object.entries(groups)
-        .map(([ticker, tickerTrades]) => ({ 
-            ticker, 
-            trades: tickerTrades, 
-            stats: calculateTradeStats(tickerTrades) 
+        .map(([ticker, tickerTrades]) => ({
+            ticker,
+            trades: tickerTrades,
+            stats: calculateTradeStats(tickerTrades)
         }))
         .filter(group => !hideExited || !group.stats.isExited)
         .sort((a, b) => {

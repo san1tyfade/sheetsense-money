@@ -1,12 +1,12 @@
 
-import { 
-  LayoutDashboard, Wallet, TrendingUp, History, Settings, Info, 
-  Banknote, BarChart2, Gauge, Sparkles, Receipt, Activity, Layers, 
-  ShieldCheck, Scale 
+import {
+  LayoutDashboard, Wallet, TrendingUp, History, Settings, Info,
+  Banknote, BarChart2, Gauge, Sparkles, Receipt, Activity, Layers,
+  ShieldCheck, Scale
 } from 'lucide-react';
 import { ViewState } from '../types';
 
-export interface ViewDefinition {
+interface ViewDefinition {
   id: ViewState;
   label: string;
   icon: any;

@@ -1,7 +1,7 @@
 import { getAccessToken } from '../authService';
 import { AppError, IEP } from './ErrorHandler';
 
-export interface GoogleRequestOptions {
+interface GoogleRequestOptions {
   method?: string;
   body?: any;
   headers?: Record<string, string>;
