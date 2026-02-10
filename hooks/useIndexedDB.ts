@@ -1,29 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppError, IEP } from '../services/infrastructure/ErrorHandler';
+import { getAppDB, DB_CONFIG } from '../services/infrastructure/DatabaseProvider';
 
-const DB_NAME = 'FinTrackDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'app_state';
-
-// Simple Promisified IDB Wrapper
-const openDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    
-    request.onupgradeneeded = (event) => {
-      const db = (event.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
-    };
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(new AppError(IEP.IDB.SCHEMA_DRIFT, "Hardware handshake failed.", 'CRITICAL', request.error));
-  });
-};
+const STORE_NAME = DB_CONFIG.APP.STORE;
 
 const dbGet = async <T>(key: string): Promise<T | undefined> => {
-  const db = await openDB();
+  const db = await getAppDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
@@ -34,16 +16,16 @@ const dbGet = async <T>(key: string): Promise<T | undefined> => {
 };
 
 const dbSet = async <T>(key: string, value: T): Promise<void> => {
-  const db = await openDB();
+  const db = await getAppDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
     const request = store.put(value, key);
     request.onsuccess = () => resolve();
     request.onerror = () => {
-        const err = request.error;
-        const code = err?.name === 'QuotaExceededError' ? IEP.IDB.QUOTA_FULL : IEP.IDB.SCHEMA_DRIFT;
-        reject(new AppError(code, `Failed to persist node: ${key}`, 'RECOVERABLE', err));
+      const err = request.error;
+      const code = err?.name === 'QuotaExceededError' ? IEP.IDB.QUOTA_FULL : IEP.IDB.SCHEMA_DRIFT;
+      reject(new AppError(code, `Failed to persist node: ${key}`, 'RECOVERABLE', err));
     };
   });
 };
@@ -61,8 +43,8 @@ export function useIndexedDB<T>(key: string, initialValue: T): [T, (value: T | (
         if (val !== undefined) {
           setStoredValue(val);
         } else {
-            // Initialize DB with default if missing
-            dbSet(key, initialValue);
+          // Initialize DB with default if missing
+          dbSet(key, initialValue);
         }
         setLoaded(true);
         isLoadedRef.current = true;
@@ -74,15 +56,15 @@ export function useIndexedDB<T>(key: string, initialValue: T): [T, (value: T | (
         isLoadedRef.current = true;
       }
     });
-    
+
     return () => { isMounted = false; };
-  }, [key]); 
+  }, [key]);
 
   const setValue = useCallback((value: T | ((val: T) => T)) => {
     // CRITICAL FIX: Prevent writing if the database hasn't finished its initial read.
     // This prevents "Empty State Overwrites" which causes data to disappear on refresh.
     if (!isLoadedRef.current) {
-        throw new AppError(IEP.IDB.LOAD_LOCK, `Blocked write to ${key}: DB initial load still in progress.`, 'SILENT');
+      throw new AppError(IEP.IDB.LOAD_LOCK, `Blocked write to ${key}: DB initial load still in progress.`, 'SILENT');
     }
 
     setStoredValue((prev) => {
